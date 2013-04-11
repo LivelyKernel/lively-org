@@ -32,26 +32,26 @@ Installation
 
 1. Clone this repository as ``org`` into the lively root folder (next to ``/core/``)
 
-    $ cd /path/to/livelykernel
-    $ git clone http://github.com/LivelyKernel/lively-org org
+        $ cd /path/to/livelykernel
+        $ git clone http://github.com/LivelyKernel/lively-org org
 
 2. Add the following line to ``/core/lively/localconfig.js``:
 
-    lively.Config.add("modulePaths", "org");
+        lively.Config.add("modulePaths", "org");
 
 3. Install dependencies with npm
 
-    $ cd org
-    $ npm install
+        $ cd org
+        $ npm install
 
 4. Create a link to ``subserver.js`` in the
    ``livelykernel-scripts/node_modules/life_star/subservers/`` directory.
 
-    $ ln -s `pwd`/subserver.js /path/to/livelykernel-scripts/node_modules/life_star/subservers/org.js
+        $ ln -s `pwd`/subserver.js /path/to/livelykernel-scripts/node_modules/life_star/subservers/org.js
 
 5. Start the LivelyKernel server with
 
-    $ lk server
+        $ lk server
 
 [1]: http://github.com/LivelyKernel/LivelyKernel
 [2]: http://socket.io/
