@@ -1,0 +1,78 @@
+.World {
+  background: url(media/textured_paper.png) !important;
+}
+
+.Box.Card {
+  border-width: 0;
+  border-radius: 10px;
+}
+
+.Box.ProjectCard {
+	box-shadow: 0 0 5px 5px rgba(51,127,127,0.2);
+}
+
+.Box.EmployeeCard {
+	box-shadow: 0 0 5px 5px rgba(255,51,51,0.2);
+}
+
+.Box.ProjectCard.selected {
+	box-shadow: 0 0 5px 5px rgba(51,127,127,0.6);
+}
+
+.Box.EmployeeCard.selected {
+	box-shadow: 0 0 5px 5px rgba(255,51,51,0.6);
+}
+
+.Icon {
+	border-radius: 10px;
+	color: white;
+	font-size: 14px;
+	border-width: 0;
+}
+
+.IconBeautifyer {
+	border-radius: 10px;
+	border-width: 0px;
+	-webkit-box-shadow: inset 0px 0px 15px 5px rgba(235,235,235,.2);
+	-moz-box-shadow: inset 0px 0px 15px 5px rgba(235,235,235,.2);
+}
+
+.Icon .Image img {
+	border-radius: 10px;
+}
+
+.Text.Icon {
+	border-width: 1px;
+	border-radius: 10px;
+	text-align: center;
+}
+
+.Box.ListContainer {
+	border-width: 0;
+	border-radius: 3px;
+}
+
+.Text.Info {
+	font-size: 12px;
+	white-space: pre-wrap;
+}
+
+.Button.CardToggle {
+	font-size: 20;
+	color: white;
+	background: black;
+	opacity: 0.3;
+}
+
+.Text.CardToggle {
+	padding: 5px 0px 0px 0px !important;
+	font-size: 20;
+}
+
+.StickyNote {
+  background: -webkit-linear-gradient(top left, #faf18c 0%,#f0ca58 100%);
+  background: -moz-linear-gradient(top left, #faf18c 0%,#f0ca58 100%);
+  border-style: none;
+  box-shadow: 1px 1px 6px rgba(0,0,0,0.7);
+}
+

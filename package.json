@@ -1,0 +1,12 @@
+{
+  "name": "lively-org",
+  "version": "0.1.0",
+  "description": "An organizer for people and projects based on Lively.",
+  "author": "Christopher Schuster <cschuster@ucdavis.edu>",
+  "dependencies": {
+    "LivelyKernel": "https://github.com/LivelyKernel/LivelyKernel/tarball/master",
+    "socket.io": "0.9.13",
+    "moment": "2.0.0",
+    "alfred": "0.5.4"
+  }
+}
