@@ -44,10 +44,10 @@ Installation
         $ cd org
         $ npm install
 
-4. Create a link to ``subserver.js`` in the
-   ``livelykernel-scripts/node_modules/life_star/subservers/`` directory.
+4. Create a link to ``org/subserver.js`` in the ``/core/servers/`` directory.
 
-        $ ln -s `pwd`/subserver.js /path/to/livelykernel-scripts/node_modules/life_star/subservers/org.js
+        $ cd /path/to/livelykernel/core/servers/
+        $ ln -s ../../org/subserver.js org.js
 
 5. Start the LivelyKernel server with
 
