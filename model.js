@@ -485,7 +485,7 @@ Object.subclass('org.model.Change',
         var methodName = this.methodName();
         var method = this.subject[methodName];
         if (!method || !Object.isFunction(method)) {
-            throw new Error('Received invalid change');
+            console.error('Received invalid change, no method ' + methodName);
         }
         try {
             this.hub.isReceiving = true;
