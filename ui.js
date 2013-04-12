@@ -166,6 +166,13 @@ Object.subclass('org.ui.Workspace',
     prepareWorld: function() {
         var onstore = function() { workspace.tearDown(); };
         onstore.asScriptOf(this.world, "onstore", {workspace: this});
+        this.world.addScript(function onHTML5Drop(evt) {
+            var target = evt.srcElement || evt.target;
+            if (this.renderContext().shapeNode === target) {
+                return $super(evt);
+            }
+            return false;
+        });
         var weakRef = {
             ref: this,
             call: function() { if (this.ref) this.ref.initializeUserInterface(); },
@@ -253,6 +260,7 @@ Object.subclass('org.ui.Workspace',
         this.status.setFixed(false);
         this.status.remove();
         delete this.status;
+        delete this.world.onHTML5Drop;
         delete this.world.onstore;
         this.disconnectViews();
     }
@@ -674,6 +682,30 @@ org.ui.View.subclass('org.ui.Card',
     }
 });
 
+
+lively.FileUploader.subclass('org.ui.AvatarUploader', {
+    initialize: function(user) {
+        this.user = user;
+    },
+    handleDroppedFiles: function(files, evt) {
+        if (files.length !== 1 || files[0].type !== 'image/png') {
+            return alert('Expects PNG image as avatar.');
+        }
+        var opts = {onLoad: 'onLoadImageBinary', asBinary: true};
+        this.loadAndOpenDroppedFiles(evt, Array.from(files), opts);
+    },
+    uploadAndOpenImageTo: function($super, _, mime, binaryData) {
+        var wr = new WebResource(this.user.getImageURL());
+        var onloadDo = function(status) {
+            if (!status.isDone()) return;
+            if (status.isSuccess()) this.user.setImageURL();
+            else alert('Failure uploading image: ' + status);
+        }.bind(this);
+        connect(wr, 'status', {call: onloadDo}, 'call');
+        wr.beBinary().beAsync().put(binaryData, mime);
+    }
+});
+
 org.ui.Card.subclass('org.ui.UserCard',
 'settings', {
     background: org.ui.lightRed
@@ -765,6 +797,14 @@ org.ui.Card.subclass('org.ui.UserCard',
         } else {
             return $super(aMorph);
         }
+    },
+    onHTML5Drop: function(evt) {
+        var files = evt.dataTransfer.files;
+        if (files) {
+            new org.ui.AvatarUploader(this.entity).handleDroppedFiles(files, evt);
+        }
+        evt.stop();
+        return true;
     }
 },
 'interaction', {
