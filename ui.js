@@ -191,7 +191,16 @@ Object.subclass('org.ui.Workspace',
             lively.bindings.connect(this.hub, 'unsaved', this, 'unsaved');
             lively.bindings.connect(this.hub, 'synchronizing', this, 'synchronizing');
             lively.bindings.connect(this.hub, 'synchronized', this, 'synchronized');
-            this.hub.connect();
+            var me = this.world.getUserName();
+            if (!this.hub.users[me] || me == "anonymous") {
+                var list = this.hub.getUsers().map(function(u) {
+                    return {isListItem: true, value: u.id, string: u.getName()};
+                });
+                var prompt = this.world.askForUserNameInList(list);
+                connect(prompt, 'result', this.hub, 'connect');
+            } else {
+                this.hub.connect();
+            }
         }
     },
     connectComplete: function(resp) {
