@@ -71,6 +71,11 @@ Object.subclass('org.model.EntityHub',
             user.onChanged(this, 'changedEntity');
         }
     },
+    createUser: function(optId) {
+        var user = new org.model.User(optId);
+        this.addUser(user);
+        return user;
+    },
     getUsers: function() {
         return Object.values(this.users);
     },
@@ -291,6 +296,11 @@ org.model.EntityHub.subclass('org.model.ClientHub',
         var project = $super(optId);
         this.sendChange(this, '+project', project);
         return project;
+    },
+    createUser: function($super, optId) {
+        var user = $super(optId);
+        this.sendChange(this, '+user', user);
+        return user;
     },
     createNote: function($super) {
         var note = $super();
@@ -680,19 +690,19 @@ org.model.Entity.subclass('org.model.User',
         return this.firstName;
     },
     setFirstName: function(firstName) {
-        this.firstName = firstName;
+        this.set('firstName', firstName);
     },
     getLastName: function() {
         return this.lastName;
     },
     setLastName: function(lastName) {
-        this.lastName = lastName;
+        this.set('lastName', lastName);
     },
     getEmail: function() {
         return this.email;
     },
     setEmail: function(email) {
-        this.email = email;
+        this.set('email', email);
     },
     getProjects: function() {
         return this.projects;
@@ -720,25 +730,25 @@ org.model.Entity.subclass('org.model.User',
         return this.department;
     },
     setDepartment: function(department) {
-        this.department = department;
+        this.set('department', department);
     },
     getPhone: function() {
         return this.phone;
     },
     setPhone: function(phone) {
-        this.phone = phone;
+        this.set('phone', phone);
     },
     getCompany: function() {
         return this.company;
     },
     setCompany: function(company) {
-        this.company = company;
+        this.set('company', company);
     },
     getOffice: function() {
         return this.office;
     },
     setOffice: function(office) {
-        this.office = office;
+        this.set('office', office);
     }
 },
 'searching', {
