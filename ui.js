@@ -697,39 +697,45 @@ org.ui.Card.subclass('org.ui.UserCard',
         this.infoPane.addMorph(this.avatar);
     },
     initializeInfo: function() {
-        this.info = new lively.morphic.Text(lively.rect(10, 10));
-        this.info.layout = {resizeWidth: true, resizeHeight: true};
-        this.info.setFixedHeight(false);
-        this.info.ignoreEvents();
-        this.info.setFill(null);
-        this.info.setBorderWidth(0);
-        this.info.setTextColor(Color.black);
-        this.info.setFontSize(10);
-        this.info.setWordBreak('normal');
+        if (!this.info) {
+            this.info = new lively.morphic.Text(lively.rect(10, 10));
+            this.info.setLineHeight(1.5);
+            this.info.layout = {resizeWidth: true, resizeHeight: true};
+            this.info.setFixedHeight(false);
+            this.info.ignoreEvents();
+            this.info.setFill(null);
+            this.info.setBorderWidth(0);
+            this.info.setTextColor(Color.black);
+            this.info.setFontSize(10);
+            this.info.setWordBreak('normal');
+        }
+        this.info.textString = this.entity.getName();
         var email = this.entity.getEmail();
         if (email) {
-            this.info.appendRichText(email, {
+            this.info.appendRichText("\n" + email, {
                 color: Color.gray.darker(2),
                 uri: "mailto:" + email
             });
         }
-        var department = this.entity.getDepartment();
-        if (department) {
-            this.info.appendRichText('\nDepartment: ' + department, {});
-        }
+        var company = this.entity.getCompany();
         var phone = this.entity.getPhone();
         if (phone) {
             this.info.appendRichText('\nPhone: ' + phone, {});
         }
         var office = this.entity.getOffice();
         if (office) {
-            this.info.appendRichText('\nOffice: ', {});
-            this.info.appendRichText(this.entity.getOffice(), {
-                color: Color.gray.darker(2),
-                doit: {code: 'this.openOffice()', context: this}
-            });
+            this.info.appendRichText('\n' + office, {});
+            //this.info.appendRichText(this.entity.getOffice(), {
+            //    color: Color.gray.darker(2),
+            //    doit: {code: 'this.openOffice()', context: this}
+            //});
         }
-        this.infoPane.addMorph(this.info);
+        if (company) {
+            this.info.appendRichText('\n' + company, {});
+        }
+        if (this.info.owner !== this.infoPane) {
+            this.infoPane.addMorph(this.info);
+        }
     },
     initializeProjectList: function() {
         var bounds = lively.pt(100, 20).extentAsRectangle();
@@ -766,6 +772,8 @@ org.ui.Card.subclass('org.ui.UserCard',
 'updating', {
     doUpdate: function($super) {
         $super();
+        this.avatar.setImageURL(this.entity.getImageURL());
+        this.initializeInfo();
         this.projectList.updateEntities(this.entity.getProjects());
     },
     disconnect: function($super) {
@@ -946,6 +954,7 @@ org.ui.Icon.subclass('org.ui.UserIcon',
         avatar.layout = {centeredHorizontal: true};
         avatar.disableEvents();
         this.addMorph(avatar);
+        this.avatar = avatar;
 
         var textColor = dark ? Color.black : Color.rgba(234,234,234);
 
@@ -955,6 +964,7 @@ org.ui.Icon.subclass('org.ui.UserIcon',
         firstname.applyStyle({resizeWidth: true, textColor: textColor, align: 'center'});
         firstname.disableEvents();
         this.addMorph(firstname);
+        this.firstname = firstname;
 
         var lastname = new lively.morphic.Text(lively.rect(0,0,0,16));
         lastname.beLabel();
@@ -963,11 +973,19 @@ org.ui.Icon.subclass('org.ui.UserIcon',
         lastname.applyStyle({resizeWidth: true, textColor: textColor, align: 'center'});
         lastname.disableEvents();
         this.addMorph(lastname);
+        this.lastname = lastname;
     }
 },
 'interaction', {
     createCard: function() {
         return new org.ui.UserCard(this.entity);
+    }
+},
+'updating', {
+    doUpdate: function() {
+        this.avatar.setImageURL(this.entity.getImageURL());
+        this.firstname.textString = this.entity.getFirstName().truncate(13);
+        this.lastname.textString = this.entity.getLastName().truncate(13);
     }
 });
 
@@ -1002,7 +1020,7 @@ org.ui.Icon.subclass('org.ui.ProjectIcon',
     }
 },
 'updating', {
-    update: function() {
+    doUpdate: function() {
         this.text.textString = this.entity.getLabel();
     }
 });
@@ -1037,7 +1055,7 @@ org.ui.Icon.subclass('org.ui.NoteIcon',
     }
 },
 'updating', {
-    update: function() {
+    doUpdate: function() {
         this.text.textString = this.entity.getContent().truncate(23);
     }
 });

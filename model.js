@@ -723,8 +723,11 @@ org.model.Entity.subclass('org.model.User',
     },
     getImageURL: function() {
         // hard-coded all image URLs to URL.root
-        // we may need to change this to support loading images directly from SAP communities
         return URL.root.withFilename('nodejs/org/images/' + this.getId());
+    },
+    setImageURL: function() {
+        // do not actually set url but update views
+        this.changed("=imageURL");
     },
     getDepartment: function() {
         return this.department;
