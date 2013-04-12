@@ -71,6 +71,7 @@ Object.subclass('org.ui.Workspace',
         this.loadData();
     },
     initializeUserInterface: function() {
+        if (!this.status) this.setupStatusBox();
         this.connectViews();
         if (!this.options.minimal) {
             this.setupSearchBar();
@@ -163,10 +164,14 @@ Object.subclass('org.ui.Workspace',
         this.status = statusBox;
     },
     prepareWorld: function() {
-        for (var key in this.worldScripts) {
-            this.worldScripts[key].asScriptOf(this.world, key, {workspace: this});
-        }
-        lively.bindings.connect(this.world, 'savingDone', this, 'initializeUserInterface');
+        var onstore = function() { workspace.tearDown(); };
+        onstore.asScriptOf(this.world, "onstore", {workspace: this});
+        var weakRef = {
+            ref: this,
+            call: function() { if (this.ref) this.ref.initializeUserInterface(); },
+            doNotSerialize: ['ref']
+        };
+        lively.bindings.connect(this.world, 'savingDone', weakRef, 'call');
     }
 },
 'synchronization', {
@@ -208,13 +213,6 @@ Object.subclass('org.ui.Workspace',
         this.status.ok("Synchronized.", 2000);
     }
 },
-'world scripts', {
-    worldScripts: {
-        onstore: function() {
-            workspace.tearDown();
-        }
-    }
-},
 'sync', {
     connectViews: function() {
         this.isConnected = true;
@@ -243,9 +241,10 @@ Object.subclass('org.ui.Workspace',
         cp && cp.remove();
         sbf && sbf.setFixed(false);
         sbf && sbf.remove();
-        for (var key in this.worldScripts) {
-            delete this.world[key];
-        }
+        this.status.setFixed(false);
+        this.status.remove();
+        delete this.status;
+        delete this.world.onstore;
         this.disconnectViews();
     }
 });
@@ -267,6 +266,7 @@ Object.extend(org.ui.Workspace, {
             world = options.world || lively.morphic.World.current();
         }
         this.currentWS = new org.ui.Workspace(world, options);
+        return this.currentWS;
     }
 });
 
