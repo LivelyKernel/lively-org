@@ -124,6 +124,11 @@ org.model.EntityHub.subclass('org.server.ServerHub',
                 callback(data);
             });
         });
+    },
+    setImageFor: function(id, imagedata, callback) {
+        var fs = _require('fs');
+        var path = this.imageDir() + '/' + id + '.png';
+        fs.writeFile(path, imagedata, 'binary', callback);
     }
 },
 'saving', {
