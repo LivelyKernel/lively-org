@@ -650,6 +650,9 @@ org.ui.View.subclass('org.ui.Card',
     wantsToBeDroppedInto: function(targetMorph) {
         return targetMorph.isWorld || (targetMorph.getName && targetMorph.getName() === 'TrashCan');
     },
+    wantsDroppedMorph: function(droppedMorph) {
+        return droppedMorph instanceof org.ui.View;
+    }
 },
 'optimization', {
     getGrabShadow: function() {
