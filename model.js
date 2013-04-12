@@ -327,7 +327,7 @@ org.model.EntityHub.subclass('org.model.ClientHub',
             url = Config.orgServer;
         } else {
             var host = URL.codeBase.hostname;
-            url = 'http://' + host + ':8114/socket.io/';
+            url = 'http://' + host + ':8114/socket.io';
         }
         return url;
     },
@@ -335,16 +335,19 @@ org.model.EntityHub.subclass('org.model.ClientHub',
         var url = new URL(this.syncURL());
         return url.protocol + '://' + url.hostname + (url.port ? ':' + url.port : '');
     },
+    syncResource: function() {
+        var url = this.syncURL();
+        return url.match(/\/([^\/]+)$/)[1];
+    },
     connect: function() {
         if (!Global.io) {
             require([]).requiresLib({
-                url: this.syncURL() + "socket.io.js", loadTest: function() { return !!Global.io; }
+                url: this.syncURL() + "/socket.io.js", loadTest: function() { return !!Global.io; }
             }).toRun(this.connectComplete.bind(this));
         }
     },
     connectComplete: function() {
-        var host = URL.codeBase.hostname;
-        this.socket = io.connect(this.syncHost());
+        this.socket = io.connect(this.syncHost(), {resource: this.syncResource()});
         this.socket.on('change', this.receiveChange.bind(this));
         this.socket.on('ok', this.successfulChange.bind(this));
         this.pendingChanges = [];
