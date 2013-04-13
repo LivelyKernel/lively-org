@@ -179,6 +179,12 @@ Object.subclass('org.ui.Workspace',
             doNotSerialize: ['ref']
         };
         lively.bindings.connect(this.world, 'savingDone', weakRef, 'call');
+    },
+    login: function() {
+        var list = this.hub.getUsers().map(function(u) {
+            return {isListItem: true, value: u.id, string: u.getName()};
+        });
+        return this.world.askForUserNameInList(list);
     }
 },
 'synchronization', {
@@ -200,10 +206,7 @@ Object.subclass('org.ui.Workspace',
             lively.bindings.connect(this.hub, 'synchronized', this, 'synchronized');
             var me = this.world.getUserName();
             if (!this.hub.users[me] || me == "anonymous") {
-                var list = this.hub.getUsers().map(function(u) {
-                    return {isListItem: true, value: u.id, string: u.getName()};
-                });
-                var prompt = this.world.askForUserNameInList(list);
+                var prompt = this.login();
                 connect(prompt, 'result', this.hub, 'connect');
             } else {
                 this.hub.connect();
