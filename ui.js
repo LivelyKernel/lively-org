@@ -511,7 +511,6 @@ lively.morphic.Text.subclass('org.ui.CardTabHeader',
     },
     initializePane: function() {
         this.pane = new org.ui.VBox(5, 0);
-        this.pane.setClipMode({x: 'hidden', y: 'auto'});
     }
 },
 'rendering', {
@@ -581,7 +580,7 @@ lively.morphic.Box.subclass('org.ui.CardResizeCorner',
 org.ui.View.subclass('org.ui.Card',
 'settings', {
     minExtent: lively.pt(300, 200),
-    defaultExtent: lively.pt(320, 250)
+    defaultExtent: lively.pt(320, 284)
 },
 'initialization', {
     initialize: function($super, entity) {
@@ -639,7 +638,10 @@ org.ui.View.subclass('org.ui.Card',
         descriptionTab.setFontSize(14);
         descriptionTab.setBorderRadius("10px 0 0 0");
         this.label = descriptionTab;
-        return descriptionTab.pane;
+        var pane = descriptionTab.pane;
+        pane.setClipMode({x: 'hidden', y: 'auto'});
+        pane.getLayouter().setBorderSize({top: 0, left: 0, right: 20, bottom: 0});
+        return pane;
     },
     initializeNotesTab: function() {
         var notesTab = this.addTab("Notes");
