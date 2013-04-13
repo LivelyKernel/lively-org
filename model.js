@@ -553,7 +553,8 @@ Object.subclass('org.model.Change',
             this.timestamp,
             prevHash];
         this.computeHash(components);
-        console.log('-> ' + components.join(' '));
+        var output = components.map(String).invoke('truncate', 16);
+        console.log('-> ' + output.join(' '));
         components.pushAt('change', 0);
         send.apply(this, components);
         this.wasSent = true;
@@ -566,7 +567,8 @@ Object.subclass('org.model.Change',
         this.value = this.deserialize(value);
         this.user = user;
         this.timestamp = timestamp;
-        console.log('<- ' + components.join(' '));
+        var output = components.map(String).invoke('truncate', 16);
+        console.log('<- ' + output.join(' '));
     }
 });
 

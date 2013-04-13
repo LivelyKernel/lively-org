@@ -158,11 +158,10 @@ org.model.EntityHub.subclass('org.server.ServerHub',
         change.send(socket.broadcast.emit.bind(socket.broadcast), prevHash);
     },
     saveChange: function(change, cb) {
-        console.log("storing change for " + change.hash + ' by ' + change.user);
         var journalEntry = this.journal.new(change.asJournalEntry());
         journalEntry.save(function(err) {
             if (err) return console.error(err);
-            console.log("stored change " + change.hash);
+            console.log("stored " + change.hash + ' by ' + change.user);
             clearTimeout(this.bounceTimeout);
             this.bounceTimeout = setTimeout(this.save.bind(this), 10000);
             if (!this.maxTimeout) {
