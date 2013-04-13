@@ -11,7 +11,7 @@
 	box-shadow: 0 0 5px 5px rgba(51,127,127,0.2);
 }
 
-.Box.EmployeeCard {
+.Box.UserCard {
 	box-shadow: 0 0 5px 5px rgba(255,51,51,0.2);
 }
 
@@ -19,7 +19,7 @@
 	box-shadow: 0 0 5px 5px rgba(51,127,127,0.6);
 }
 
-.Box.EmployeeCard.selected {
+.Box.UserCard.selected {
 	box-shadow: 0 0 5px 5px rgba(255,51,51,0.6);
 }
 
