@@ -626,8 +626,8 @@ Object.subclass('org.model.Entity',
     },
     changed: function(message, optValue, optOldValue) {
         var args = [this, message];
-        if (optValue) args.push(optValue);
-        if (optOldValue) args.push(optOldValue);
+        if (optValue !== undefined) args.push(optValue);
+        if (optOldValue !== undefined) args.push(optOldValue);
         lively.bindings.signal(this, 'change', args);
         lively.bindings.signal(this, 'change' + message.substring(1).capitalize(), args);
     },
@@ -824,6 +824,7 @@ org.model.Entity.subclass('org.model.Note',
 'initialization', {
     initialize: function($super, optId) {
         $super(optId);
+        this.setContent('');
         this.setCreationDate(new Date());
     }
 },
