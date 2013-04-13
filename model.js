@@ -1,10 +1,4 @@
-module('org.model')
-.requires('lively.persistence.Serializer')
-.requiresLib({
-    url: URL.root.withFilename('org/node_modules/moment/moment.js'),
-    loadTest: function() { return !!Global.moment; }
-})
-.toRun(function() {
+module('org.model').requires('lively.persistence.Serializer').requiresLib({url:URL.root.withFilename('org/node_modules/moment/moment.js'),loadTest:function(){return!!Global.moment}}).toRun(function(){
 
 Object.subclass('org.model.EntityHub',
 'initialization', {
