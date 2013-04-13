@@ -508,6 +508,7 @@ lively.morphic.Text.subclass('org.ui.CardTabHeader',
     },
     initializePane: function() {
         this.pane = new org.ui.VBox(5, 0);
+        this.pane.setClipMode({x: 'hidden', y: 'auto'});
     }
 },
 'rendering', {
@@ -840,7 +841,7 @@ org.ui.Card.subclass('org.ui.ProjectCard',
     },
     initializeDescription: function() {
         var text = new lively.morphic.Text(lively.rect(10, 10));
-        text.layout = {resizeWidth: true, resizeHeight: true};
+        text.layout = {resizeWidth: true};
         text.setFixedHeight(false);
         text.setFill(null);
         text.setBorderWidth(0);
@@ -880,6 +881,7 @@ org.ui.Card.subclass('org.ui.ProjectCard',
 },
 'interaction', {
     setDescription: function(description) {
+        this.descriptionPane.applyLayout();
         this.withoutUpdating(function() {
             this.entity.setDescription(description);
         });
@@ -900,6 +902,7 @@ org.ui.Card.subclass('org.ui.ProjectCard',
         $super();
         this.description.textString = this.entity.getDescription();
         this.memberList.updateEntities(this.entity.getMembers());
+        this.descriptionPane.applyLayout.bind(this.descriptionPane).delay(0);
     },
     disconnect: function($super) {
         this.memberList.updateEntities([]);
