@@ -841,6 +841,7 @@ org.ui.Card.subclass('org.ui.ProjectCard',
     },
     initializeDescriptionTab: function($super) {
         this.descriptionPane = $super();
+        this.label.morphMenuItems = this.morphMenuItems.bind(this);
         this.initializeDescription();
         this.initializeMemberList();
     },
