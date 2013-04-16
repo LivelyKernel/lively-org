@@ -35,7 +35,6 @@ lively.morphic.Box.subclass("org.ui.Box", {
     initialize: function($super, layoutClass, padding, spacing) {
         $super(lively.rect(0, 0, 105, 105));
         this.ignoreEvents();
-        //this.disableHalos();
         this.layout = {resizeWidth: true, resizeHeight: true};
         var layouter = new layoutClass(this);
         layouter.setBorderSize(padding === undefined ? 20 : padding);
@@ -870,6 +869,47 @@ org.ui.Card.subclass('org.ui.ProjectCard',
         this.descriptionPane.addMorph(memberHeader);
         this.memberList = new org.ui.IconList(true);
         this.descriptionPane.addMorph(this.memberList);
+    },
+    initializeHistoryTab: function() {
+        // just replace the history tab for now until it is implemented
+        var partsTab = this.addTab("Parts");
+        partsTab.setBorderRadius("0 10px 0 0");
+        var layouter = new lively.morphic.Layout.TileLayout(partsTab.pane);
+        layouter.displaysPlaceholders = Functions.False;
+        partsTab.pane.setLayouter(layouter);
+        partsTab.pane.unignoreEvents();
+        partsTab.pane.disableGrabbing();
+        this.partsTab = partsTab.pane;
+        this.partsTab.project = this.entity;
+        this.partsTab.addScript(function addMorph(morph) {
+            if (morph.name && this.owner && !this.owner.isUpdating) {
+                morph.remove();
+                if (this.project.getParts().include(morph.name)) {
+                    var msg = 'Morph with that name already exists. Keep name to overwrite.';
+                    this.world().prompt(msg, function(input) {
+                        if (input) {
+                            morph.setName(input);
+                            this.upload(morph);
+                        }
+                    }.bind(this), morph.name);
+                } else {
+                    this.upload(morph);
+                }
+                return morph;
+            } else {
+                return $super(morph);
+            }
+        });
+        this.partsTab.addScript(function upload(morph) {
+            var partsBinUrl = new URL(this.project.getPartSpaceURL());
+            var wr = partsBinUrl.asWebResource();
+            if (!wr.exists()) wr.create();
+            var info = morph.getPartsBinMetaInfo();
+            info.partName = morph.name;
+            morph.copyToPartsBinUrl(partsBinUrl);
+            this.project.addPart.bind(this.project, morph.name).delay(1);
+        });
+        return this.partsTab;
     }
 },
 'dropping', {
@@ -904,11 +944,21 @@ org.ui.Card.subclass('org.ui.ProjectCard',
     }
 },
 'updating', {
+    updateParts: function() {
+        var url = this.entity.getPartSpaceURL();
+        this.partsTab.removeAllMorphs();
+        this.entity.getParts().each(function(part) {
+            var partItem = lively.PartsBin.getPartItem(part, url);
+            var morph = partItem.asPartsBinItem();
+            this.partsTab.addMorph(morph);
+        }, this);
+    },
     doUpdate: function($super) {
         $super();
         this.description.textString = this.entity.getDescription();
         this.memberList.updateEntities(this.entity.getMembers());
         this.descriptionPane.applyLayout.bind(this.descriptionPane).delay(0);
+        this.updateParts();
     },
     disconnect: function($super) {
         this.memberList.updateEntities([]);
