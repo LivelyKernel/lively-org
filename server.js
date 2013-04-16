@@ -3,7 +3,9 @@ module('org.server').requires('org.model').toRun(function() {
 org.model.Change.addMethods({
     record: function() {
         if (this.message[0] !== '=') return;
-        this.oldValue = this.subject[this.message.substring(1)];
+        var prop = this.message.substring(1);
+        if (!this.subject || !this.subject.hasOwnProperty(prop)) return;
+        this.oldValue = this.subject[prop];
     },
     asJournalEntry: function() {
         return {
