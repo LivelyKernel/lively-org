@@ -769,6 +769,7 @@ org.model.Entity.subclass('org.model.Project',
     initialize: function($super, optId) {
         $super(optId);
         this.members = [];
+        this.parts = [];
     }
 },
 'accessing', {
@@ -803,11 +804,30 @@ org.model.Entity.subclass('org.model.Project',
     },
     setDescription: function(description) {
         this.set('description', description);
+    },
+    getParts: function() {
+        if (!this.parts) this.parts = [];
+        return this.parts;
+    },
+    addPart: function(part) {
+        if (!this.parts.include(part)) {
+            this.parts.push(part);
+            this.changed('+part', part);
+        }
+    },
+    removePart: function(part) {
+        if (this.parts.include(part)) {
+            this.parts.remove(part);
+            this.changed('-part', part);
+        }
+    },
+    getPartSpaceURL: function() {
+        return URL.root.withFilename('org/parts/' + this.id + '/').toString();
     }
 },
 'searching', {
     getSearchDocument: function() {
-        return this.getName() + ' ' + this.getDescription();
+        return this.getName() + ' ' + this.getDescription() + this.getParts().join(' ');
     }
 });
 

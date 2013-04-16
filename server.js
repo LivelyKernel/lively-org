@@ -31,6 +31,9 @@ org.model.EntityHub.subclass('org.server.ServerHub',
     imageDir: function() {
         return _require('path').resolve(__dirname, './images');
     },
+    partsDir: function() {
+        return _require('path').resolve(__dirname, './parts');
+    },
     asJSON: function() {
         return JSON.stringify(this.asData());
     },
@@ -53,6 +56,10 @@ org.model.EntityHub.subclass('org.server.ServerHub',
         if (!fs.existsSync(this.imageDir())) {
             fs.mkdirSync(this.imageDir());
             console.log("created " + this.imageDir());
+        }
+        if (!fs.existsSync(this.partsDir())) {
+            fs.mkdirSync(this.partsDir());
+            console.log("created " + this.partsDir());
         }
         Alfred.open(this.dbDir(), function(err, db) {
             if (err) return console.error(err);
