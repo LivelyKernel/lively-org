@@ -1242,7 +1242,6 @@ org.ui.View.subclass('org.ui.StickyNote',
 'interacting', {
     openCreator: function() {
         var card = new org.ui.UserCard(this.entity.getCreator());
-        card.setCollapsed();
         this.world().firstHand().grabMorph(card);
     },
     setContent: function(content) {
