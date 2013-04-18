@@ -1221,6 +1221,11 @@ org.ui.View.subclass('org.ui.StickyNote',
         txt.setFixedWidth(true);
         txt.setFixedHeight(false);
         txt.setWordBreak('normal');
+        txt.addScript(function onEnterPressed(evt) {
+            if (!(this.owner instanceof org.ui.StickyNote) ||
+                !evt.isCommandKey()) return $super(evt);
+            this.owner.createAnotherNote();
+        });
         connect(txt, 'textString', this, 'setContent');
         return txt;
     },
@@ -1275,6 +1280,19 @@ org.ui.View.subclass('org.ui.StickyNote',
             var hub = org.ui.Workspace.current().hub;
             hub.deleteNote(this.entity);
         }
+    },
+    createAnotherNote: function() {
+        if (this.owner instanceof org.ui.NoteList) {
+            return this.owner.addNewNote();
+        }
+        var hub = org.ui.Workspace.current().hub;
+        var entity = hub.createNote();
+        entity.setContent('');
+        var note = new org.ui.StickyNote(entity);
+        note.openInWorld();
+        note.setPosition(this.globalBounds().bottomLeft().addXY(0, 5));
+        note.submorphs.first().focus();
+        return note;
     }
 },
 'updating', {
