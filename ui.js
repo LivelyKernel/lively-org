@@ -73,10 +73,7 @@ Object.subclass('org.ui.Workspace',
         if (!this.status) this.setupStatusBox();
         this.connectViews();
         if (!this.options.minimal) {
-            this.setupSearchBar();
-            this.setupTrashCan();
-            this.setupStickyNoteStack();
-            this.setupCreateProjectIcon();
+            this.showWidgets();
         }
         this.prepareWorld();
     },
@@ -87,6 +84,7 @@ Object.subclass('org.ui.Workspace',
         this.world.setExtent(lively.pt(newX, newY));
     },
     setupSearchBar: function() {
+        if (this.world.get('SearchBar_Flap')) return;
         var zoom = this.world.getZoomLevel(),
             pos = this.world.getScrollOffset().addPt(pt(5,0)),
             extent = pt((this.world.visibleBounds().width - 10) * zoom, 150);
@@ -103,6 +101,7 @@ Object.subclass('org.ui.Workspace',
         flap.setBorderRadius(0);
     },
     setupTrashCan: function() {
+        if (this.world.get('TrashCan')) return;
         var available = Math.min(this.world.visibleBounds().height / 8,
                                  this.world.visibleBounds().width / 8),
             offset = this.status.getBounds().extent().withX(0),
@@ -117,6 +116,7 @@ Object.subclass('org.ui.Workspace',
         trashCan.setName('TrashCan');
     },
     setupStickyNoteStack: function() {
+        if (this.world.get('StickyNoteStack')) return;
         var available = Math.min(this.world.visibleBounds().height / 8,
                                  this.world.visibleBounds().width / 8),
             offset = this.status.getBounds().extent().withX(0),
@@ -134,6 +134,7 @@ Object.subclass('org.ui.Workspace',
         stickyNoteStack.setName('StickyNoteStack');
     },
     setupCreateProjectIcon: function() {
+        if (this.world.get('CreateProjectIcon')) return;
         var available = Math.min(this.world.visibleBounds().height / 8,
                                  this.world.visibleBounds().width / 8),
             offset = this.status.getBounds().extent().withX(0),
@@ -163,8 +164,9 @@ Object.subclass('org.ui.Workspace',
         this.status = statusBox;
     },
     prepareWorld: function() {
-        var onstore = function() { workspace.tearDown(); };
-        onstore.asScriptOf(this.world, "onstore", {workspace: this});
+        this.world.addScript(function onstore() {
+            workspace.tearDown();
+        }, 'onstore', {workspace: this});
         this.world.addScript(function onHTML5Drop(evt) {
             var target = evt.srcElement || evt.target;
             if (this.renderContext().shapeNode === target) {
@@ -172,6 +174,15 @@ Object.subclass('org.ui.Workspace',
             }
             return false;
         });
+        this.world.addScript(function morphMenuItems() {
+            var items = $super();
+            if (workspace.hasWidgets()) {
+                items.push(['[X] Org widgets', workspace.hideWidgets.bind(workspace)]);
+            } else {
+                items.push(['[  ] Org widgets', workspace.showWidgets.bind(workspace)]);
+            }
+            return items;
+        }, 'morphMenuItems', {workspace: this});
         var weakRef = {
             ref: this,
             call: function() { if (this.ref) this.ref.initializeUserInterface(); },
@@ -184,6 +195,25 @@ Object.subclass('org.ui.Workspace',
             return {isListItem: true, value: u.id, string: u.getName()};
         });
         return this.world.askForUserNameInList(list);
+    },
+    hasWidgets: function() {
+        return !!this.world.get('SearchBar_Flap');
+    },
+    showWidgets: function() {
+        this.setupSearchBar();
+        this.setupTrashCan();
+        this.setupStickyNoteStack();
+        this.setupCreateProjectIcon();
+    },
+    hideWidgets: function() {
+        var tc = this.world.get('TrashCan');
+        if (tc) { tc.setFixed(false); tc.remove(); }
+        var sn = this.world.get('StickyNoteStack');
+        if (sn) { sn.setFixed(false); sn.remove(); }
+        var cp = this.world.get('CreateProjectIcon');
+        if (cp) { cp.setFixed(false); cp.remove(); }
+        var sbf = this.world.get('SearchBar_Flap');
+        if (sbf) { sbf.setFixed(false); sbf.remove(); }
     }
 },
 'synchronization', {
@@ -247,23 +277,13 @@ Object.subclass('org.ui.Workspace',
 },
 'tear down', {
     tearDown: function () {
-        var tc = this.world.get('TrashCan'),
-            sn = this.world.get('StickyNoteStack'),
-            cp = this.world.get('CreateProjectIcon'),
-            sbf = this.world.get('SearchBar_Flap');
-        tc && tc.setFixed(false);
-        tc && tc.remove();
-        sn && sn.setFixed(false);
-        sn && sn.remove();
-        cp && cp.setFixed(false);
-        cp && cp.remove();
-        sbf && sbf.setFixed(false);
-        sbf && sbf.remove();
+        this.hideWidgets();
         this.status.setFixed(false);
         this.status.remove();
         delete this.status;
         delete this.world.onHTML5Drop;
         delete this.world.onstore;
+        delete this.world.morphMenuItems;
         this.disconnectViews();
     }
 });
