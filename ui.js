@@ -1601,6 +1601,7 @@ lively.morphic.Box.subclass('org.ui.SearchResults',
         });
         scrollContainer.setLayouter(layouter);
         scrollContainer.applyLayout();
+        scrollContainer.disableGrabbing();
         scrollContainer.getLayouter().setHandlesSubmorphResized(true);
         if (UserAgent.isTouch)
             scrollContainer.beHorizontalScroll();
