@@ -1,4 +1,4 @@
-module('org.ui').requires('org.model').toRun(function() {
+module('org.ui').requires('org.model', 'lively.morphic.Core').toRun(function() {
 
 org.model.Entity.addMethods({
     createIcon: function() {
