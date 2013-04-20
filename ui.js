@@ -1006,6 +1006,7 @@ org.ui.Card.subclass('org.ui.UserCard',
         $super();
     }
 });
+
 org.ui.Card.subclass('org.ui.ProjectCard',
 'settings', {
     background: org.ui.lightBlue
@@ -1566,6 +1567,7 @@ lively.morphic.Box.subclass('org.ui.SearchBar',
     onTouchMove: function(evt) { evt.stop(); },
     onTouchEnd: function(evt) { evt.stop(); }
 });
+
 lively.morphic.Box.subclass('org.ui.SearchResults',
 'initialization', {
     initialize: function($super, extensions) {
