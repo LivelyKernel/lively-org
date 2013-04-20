@@ -646,9 +646,9 @@ lively.morphic.Box.subclass('org.ui.View',
         // disconnect when storing
         if (this.entity) {
             this.disconnect();
+            // store only entity id, not real entity
+            persistentCopy.$entity = this.entity.getTypedId();
         }
-        // store only entity id, not real entity
-        persistentCopy.$entity = this.entity.getTypedId();
         // if there is a currently connected workspace
         var workspace = org.ui.Workspace.current();
         if (workspace && workspace.isConnected) {
@@ -822,7 +822,7 @@ org.ui.View.subclass('org.ui.Card',
     },
     initializeNotesTab: function() {
         var notesTab = this.addTab("Notes");
-        this.noteList = new org.ui.NoteList(this.entity);
+        this.noteList = new org.ui.NoteList(this);
         notesTab.pane.addMorph(this.noteList);
         return notesTab.pane;
     },
@@ -854,6 +854,14 @@ org.ui.View.subclass('org.ui.Card',
     doUpdate: function() {
         this.label.textString = this.entity.getLabel();
         this.noteList.update();
+    },
+    connect: function($super, hub) {
+        $super(hub);
+        this.noteList.connect(hub);
+    },
+    disconnect: function($super) {
+        this.noteList.disconnect();
+        $super();
     }
 },
 'notes', {
@@ -1002,8 +1010,12 @@ org.ui.Card.subclass('org.ui.UserCard',
         this.initializeInfo();
         this.projectList.updateEntities(this.entity.getProjects());
     },
+    connect: function($super, hub) {
+        this.projectList.connect(hub);
+        $super(hub);
+    },
     disconnect: function($super) {
-        this.projectList.updateEntities([]);
+        this.projectList.disconnect();
         $super();
     }
 });
@@ -1059,11 +1071,11 @@ org.ui.Card.subclass('org.ui.ProjectCard',
         partsTab.pane.unignoreEvents();
         partsTab.pane.disableGrabbing();
         this.partsTab = partsTab.pane;
-        this.partsTab.project = this.entity;
+        this.partsTab.card = this;
         this.partsTab.addScript(function addMorph(morph) {
             if (morph.name && this.owner && !this.owner.isUpdating) {
                 morph.remove();
-                if (this.project.getParts().include(morph.name)) {
+                if (this.card.entity.getParts().include(morph.name)) {
                     var msg = 'Morph with that name already exists. Keep name to overwrite.';
                     this.world().prompt(msg, function(input) {
                         if (input) {
@@ -1080,13 +1092,13 @@ org.ui.Card.subclass('org.ui.ProjectCard',
             }
         });
         this.partsTab.addScript(function upload(morph) {
-            var partsBinUrl = new URL(this.project.getPartSpaceURL());
+            var partsBinUrl = new URL(this.card.entity.getPartSpaceURL());
             var wr = partsBinUrl.asWebResource();
             if (!wr.exists()) wr.create();
             var info = morph.getPartsBinMetaInfo();
             info.partName = morph.name;
             morph.copyToPartsBinUrl(partsBinUrl);
-            this.project.addPart.bind(this.project, morph.name).delay(1);
+            this.project.addPart.bind(this.card.entity, morph.name).delay(1);
         });
         return this.partsTab;
     }
@@ -1139,8 +1151,12 @@ org.ui.Card.subclass('org.ui.ProjectCard',
         this.descriptionPane.applyLayout.bind(this.descriptionPane).delay(0);
         this.updateParts();
     },
+    connect: function($super, hub) {
+        this.memberList.connect(hub);
+        $super(hub);
+    },
     disconnect: function($super) {
-        this.memberList.updateEntities([]);
+        this.memberList.disconnect();
         $super();
     }
 });
