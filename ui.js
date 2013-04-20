@@ -40,6 +40,7 @@ lively.morphic.Box.subclass("org.ui.Box", {
         layouter.setBorderSize(padding === undefined ? 20 : padding);
         layouter.setSpacing(spacing === undefined ? 20 : spacing);
         layouter.displaysPlaceholders = Functions.False;
+        layouter.setHandlesSubmorphResized(true);
         Object.addScript(layouter, function orderedSubmorphs(submorphs) {
             return submorphs.reject(function(ea) {
                 return ea.isEpiMorp || !ea.isLayoutable;
