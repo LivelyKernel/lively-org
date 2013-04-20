@@ -885,6 +885,16 @@ org.model.Entity.subclass('org.model.Note',
         return $super();
     }
 },
+'tagging', {
+    hashTagRegEx: /\B#\w+/g,
+    getTags: function() {
+        return this.getContent().match(this.hashTagRegEx);
+    },
+    hasTag: function(tag) {
+        if (!tag) return true;
+        return this.getContent().indexOf(tag) >= 0;
+    }
+},
 'searching', {
     getSearchDocument: function() {
         var creator = this.getCreator();

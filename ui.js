@@ -355,17 +355,149 @@ org.ui.HBox.subclass('org.ui.IconList',
         }
         return true;
     }
+},
+'updating', {
+    connect: function() {
+        this.submorphs.invoke('connect');
+    },
+    disconnect: function() {
+        this.submorphs.invoke('disconnect');
+    }
+});
+
+lively.morphic.Text.subclass('org.ui.Tag',
+'settings', {
+    defaultHeight: 20
+},
+'initialization', {
+    initialize: function($super, tagName) {
+        var label = tagName ? tagName : 'all';
+        var extent = lively.pt(label.length * 12, this.defaultHeight);
+        $super(extent.extentAsRectangle(), label);
+        this.tagName = tagName;
+        this.setBorderRadius(6);
+        this.setFixedWidth(true);
+        this.setFixedHeight(true);
+        this.setFontSize(10);
+        this.setAlign('center');
+        this.setInputAllowed(false);
+    },
+    removeUnlessInTags: function(tags) {
+        if (this.tagName && !tags.include(this.tagName)) {
+            this.remove();
+        }
+    }
+},
+'events', {
+    onMouseDown: function(evt) {
+        if (evt.isLeftMouseButtonDown()) {
+            this.owner.owner.setFilter(this.tagName);
+        }
+    }
+},
+'activation', {
+    setActive: function(tagName) {
+        if (this.tagName === tagName) {
+            this.activate();
+        } else {
+            this.deactivate();
+        }
+    },
+    activate: function() {
+        this.setFill(new Color(0.3, 0.3, 0.3));
+        this.setTextColor(Color.white);
+    },
+    deactivate: function() {
+        this.setFill(new Color(0.9, 0.9, 0.9));
+        this.setTextColor(new Color(0.3, 0.3, 0.3));
+    }
+});
+
+org.ui.HBox.subclass('org.ui.TagList',
+'settings', {
+    defaultHeight: 20,
+    updateNoteBufferTime: 500
+},
+'initialization', {
+    initialize: function($super) {
+        $super(5, 5);
+        this.layout.resizeHeight = false;
+        this.setExtent(lively.pt(100, this.defaultHeight));
+    }
+},
+'user interface', {
+    createTagMorph: function(tagName) {
+        var tag = new org.ui.Tag(tagName);
+        tag.setActive(this.owner.filter);
+        this.addMorph(tag);
+    },
+    setFilter: function(filter) {
+        this.submorphs.invoke('setActive', filter);
+    }
+},
+'updating', {
+    updateTags: function(tags) {
+        if (tags.length == 0) { // trivial case
+            this.removeAllMorphs();
+            this.setExtent(lively.pt(this.getExtent().x, 0));
+            this.owner.setFilter();
+            return;
+        }
+        // remove obsolete tags
+        this.submorphs.invoke('removeUnlessInTags', tags);
+        // add new tags (undefined means 'all')
+        tags.unshift(undefined);
+        var currentTags = this.submorphs.pluck('tagName');
+        tags.each(function(tag) {
+            if (!currentTags.include(tag)) {
+                this.createTagMorph(tag);
+            }
+        }, this);
+        // fallback to 'all' if no other tag is selected
+        if (!this.submorphs.any(function(m) {
+            return m.tagName === this.owner.filter;
+        }, this)) this.owner.setFilter("all");
+    },
+    updateNotes: function() {
+        this.updateNotes = Functions.debounce(
+            this.updateNoteBufferTime,
+            this.updateNotesImpl.bind(this));
+        this.updateNotes();
+    },
+    updateNotesImpl: function() {
+        var notes = this.owner.getNotes();
+        var tags = [];
+        notes.each(function(note) {
+            var foundTags = note.getTags();
+            if (foundTags) foundTags.each(function(t) {
+                tags.pushIfNotIncluded(t);
+            });
+        }, this);
+        this.updateTags(tags);
+    }
 });
 
 org.ui.VBox.subclass('org.ui.NoteList',
 'initialization', {
-    initialize: function($super, entity) {
+    initialize: function($super, card) {
         var borderSize = {top: 0, left: 0, right: 20, bottom: 10};
         $super(borderSize, 0);
-        this.entity = entity;
+        this.card = card;
         //TODO: Make this a view
-        this.setClipMode(UserAgent.isTouch ? 'hidden' : {x: 'hidden', y: 'auto'});
+        this.setClipMode({x: 'hidden', y: 'auto'});
+        this.initializeTagList();
         this.initializeCreateNote();
+        this.tagList.updateNotes();
+    },
+    initializeTagList: function() {
+        this.tagList = new org.ui.TagList();
+        this.addMorph(this.tagList);
+    },
+    setFilter: function(hashtag) {
+        if (hashtag === this.filter) return; // do nothing
+        this.filter = hashtag;
+        this.tagList.setFilter(this.filter);
+        this.update();
     },
     initializeCreateNote: function() {
         var bounds = lively.pt(100, 20).extentAsRectangle();
@@ -380,11 +512,22 @@ org.ui.VBox.subclass('org.ui.NoteList',
         this.addMorph(this.createNote);
     }
 },
+'accessing', {
+    getNotes: function() {
+        return this.card.entity.getNotes();
+    },
+    getStickyNotes: function() {
+        return this.submorphs.select(function(m) {
+            return m instanceof org.ui.StickyNote;
+        });
+    }
+},
 'entities', {
     addNewNote: function() {
         var hub = org.ui.Workspace.current().hub;
         var newNote = hub.createNote();
-        this.entity.addNote(newNote);
+        if (this.filter) newNote.setContent(' ' + this.filter);
+        this.card.entity.addNote(newNote);
         var sticky = this.getStickyForEntity(newNote);
         sticky.submorphs.first().focus();
         this.scrollToBottom();
@@ -393,19 +536,21 @@ org.ui.VBox.subclass('org.ui.NoteList',
         var note = new org.ui.StickyNote(noteEntity);
         note.layout.resizeWidth = true;
         this.addMorph(note);
+        noteEntity.onChanged('content', this.tagList, 'updateNotes');
         return note;
     },
     getStickyForEntity: function(entity) {
-        return this.submorphs
+        return this.getStickyNotes()
             .find(function(m) { return m.entity == entity; });
-    },
+    }
+},
+'updating', {
     update: function() {
-        var newEntities = this.entity.getNotes();
+        var newEntities = this.getNotes().select(function(note) {
+            return note.hasTag(this.filter);
+        }, this);
         // remove obsolete notes
-        var currentNotes = this.submorphs.select(function(m) {
-            return m instanceof org.ui.StickyNote;
-        });
-        currentNotes.each(function(m) {
+        this.getStickyNotes().each(function(m) {
             if (!newEntities.include(m.entity)) m.remove();
         }, this);
         // add new notes
@@ -413,6 +558,18 @@ org.ui.VBox.subclass('org.ui.NoteList',
             if (!this.getStickyForEntity(ea)) this.addNote(ea);
         }, this);
         this.addMorph(this.createNote);
+    },
+    connect: function() {
+        this.getStickyNotes().invoke('connect');
+        this.getStickyNotes().pluck('entity').each(function(e) {
+            e.onChanged('content', this.tagList, 'updateNotes');
+        }, this);
+    },
+    disconnect: function() {
+        this.getStickyNotes().pluck('entity').each(function(e) {
+            e.offChanged('content', this.tagList, 'updateNotes');
+        }, this);
+        this.getStickyNotes().invoke('disconnect');
     }
 });
 
