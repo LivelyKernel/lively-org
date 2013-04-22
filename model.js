@@ -892,7 +892,8 @@ org.model.Entity.subclass('org.model.Note',
     },
     hasTag: function(tag) {
         if (!tag) return true;
-        return this.getContent().indexOf(tag) >= 0;
+        var reg = new RegExp(tag + '(?![a-zA-Z0-9_])');
+        return reg.test(this.getContent());
     }
 },
 'searching', {
