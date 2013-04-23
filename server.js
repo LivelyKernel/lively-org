@@ -163,8 +163,8 @@ org.model.EntityHub.subclass('org.server.ServerHub',
 },
 'synchronization', {
     receiveChange: function($super, subject, message, value, user, timestamp, prevHash, socket) {
-        var change = $super(subject, message, value, user, timestamp, prevHash);
         this.mutex.lock(function() {
+            var change = $super(subject, message, value, user, timestamp, prevHash);
             if (this.hash === prevHash) {
                 change.record();
                 this.sendUpdates(socket, change, prevHash);
