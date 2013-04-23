@@ -1,5 +1,26 @@
 module('org.server').requires('org.model').toRun(function() {
 
+Object.subclass('org.server.Mutex', {
+    initialize: function() {
+        var EventEmitter = _require('events').EventEmitter;
+        this.queue = new EventEmitter();
+        this.queue.setMaxListeners(100);
+        this.locked = false;
+    },
+    lock: function (fn) {
+        if (this.locked) {
+            this.queue.once('ready', this.lock.bind(this, fn));
+        } else {
+            this.locked = true;
+            fn();
+        }
+    },
+    release: function () {
+        this.locked = false;
+        this.queue.emit('ready');
+    }
+});
+
 org.model.Change.addMethods({
     record: function() {
         if (this.message[0] !== '=') return;
@@ -27,8 +48,8 @@ org.model.EntityHub.subclass('org.server.ServerHub',
     exampleFile: function() {
         return _require('path').resolve(__dirname, './empty-data.json');
     },
-    dbDir: function() {
-        return _require('path').resolve(__dirname, './journal');
+    dbFile: function() {
+        return _require('path').resolve(__dirname, './journal.db');
     },
     imageDir: function() {
         return _require('path').resolve(__dirname, './images');
@@ -49,12 +70,7 @@ org.model.EntityHub.subclass('org.server.ServerHub',
 },
 'loading', {
     loadFromFile: function() {
-        var fs = _require('fs'),
-            Alfred = _require('alfred');
-        if (!fs.existsSync(this.dbDir())) {
-            fs.mkdirSync(this.dbDir());
-            console.log("created " + this.dbDir());
-        }
+        var fs = _require('fs');
         if (!fs.existsSync(this.imageDir())) {
             fs.mkdirSync(this.imageDir());
             console.log("created " + this.imageDir());
@@ -63,56 +79,54 @@ org.model.EntityHub.subclass('org.server.ServerHub',
             fs.mkdirSync(this.partsDir());
             console.log("created " + this.partsDir());
         }
-        Alfred.open(this.dbDir(), function(err, db) {
+        var sqlite3 = _require('sqlite3').verbose();
+        var cb = fs.existsSync(this.dbFile()) ? this.initDB : this.setupDB;
+        this.db = new sqlite3.Database(this.dbFile(), cb.bind(this));
+    },
+    setupDB: function(err) {
+        if (err) return console.error(err);
+        var query = "CREATE TABLE journal (" +
+                    "    id INTEGER PRIMARY KEY ASC AUTOINCREMENT," +
+                    "    subject VARCHAR(42) NOT NULL," +
+                    "    message VARCHAR(42) NOT NULL," +
+                    "    value_lit TEXT," +
+                    "    value_ref VARCHAR(42)," +
+                    "    old_lit TEXT," +
+                    "    old_ref VARCHAR(42)," +
+                    "    user VARCHAR(42) NOT NULL," +
+                    "    timestamp INTEGER NOT NULL," +
+                    "    hash CHARACTER(8) UNIQUE NOT NULL" +
+                    ")";
+        this.db.run(query, function(err) {
             if (err) return console.error(err);
-            this.setupDB(db);
-            if (fs.existsSync(this.dataFile())) {
-                this.loadInitialData();
-            } else {
-                console.log('creating initial state from example data');
-                var readStream = fs.createReadStream(this.exampleFile());
-                var writeStream = fs.createWriteStream(this.dataFile());
-                readStream.pipe(writeStream);
-                writeStream.on('close', this.loadInitialData.bind(this));
-            }
+            var query = "CREATE INDEX user ON journal (user)";
+            this.db.run(query, function(err) {
+                if (err) return console.error(err);
+                var query = "CREATE INDEX ref ON journal (subject, value_ref, old_ref)";
+                this.db.run(query, function(err) {
+                    if (err) return console.error(err);
+                    var query = "CREATE INDEX time ON journal (timestamp)";
+                    this.db.run(query, function(err) {
+                        if (err) return console.error(err);
+                        this.initDB();
+                    }.bind(this));
+                }.bind(this));
+            }.bind(this));
         }.bind(this));
     },
-    setupDB: function(db) {
-        this.journal = db.define('Journal');
-        this.journal.property('subject', 'string', {
-            optional: false,
-            minLength: 1,
-            maxLenght: 42
-        });
-        this.journal.property('message', 'string', {
-            optional: false,
-            minLength: 2,
-            maxLenght: 42
-        });
-        this.journal.property('value', '', {
-            optional: true
-        });
-        this.journal.property('oldValue', '', {
-            optional: true
-        });
-        this.journal.property('user', 'string', {
-            optional: false,
-            minLength: 2,
-            maxLenght: 42
-        });
-        this.journal.property('timestamp', 'number', {
-            optional: false,
-            minimum: 1300000000
-        });
-        this.journal.index('subject', function(journal) {
-            return journal.subject;
-        });
-        this.journal.index('user', function(journal) {
-            return journal.user;
-        });
-        this.journal.index('timestamp', function(journal) {
-            return journal.timestamp;
-        });
+    initDB: function(err) {
+        this.mutex = new org.server.Mutex();
+        var fs = _require('fs');
+        if (err) return console.error(err);
+        if (fs.existsSync(this.dataFile())) {
+            this.loadInitialData();
+        } else {
+            console.log('creating initial state from example data');
+            var readStream = fs.createReadStream(this.exampleFile());
+            var writeStream = fs.createWriteStream(this.dataFile());
+            readStream.pipe(writeStream);
+            writeStream.on('close', this.loadInitialData.bind(this));
+        }
     },
     loadInitialData: function() {
         _require('fs').readFile(this.dataFile(), function (err, buffer) {
@@ -150,26 +164,58 @@ org.model.EntityHub.subclass('org.server.ServerHub',
 'synchronization', {
     receiveChange: function($super, subject, message, value, user, timestamp, prevHash, socket) {
         var change = $super(subject, message, value, user, timestamp, prevHash);
-        if (this.hash === prevHash) {
-            change.record();
-            this.sendUpdates(socket, change, prevHash);
-            this.saveChange(change, function() {
-                change.apply();
-                this.hash = change.hash;
-            }.bind(this));
-        } else {
-            console.error("received out-dated change");
-        }
+        this.mutex.lock(function() {
+            if (this.hash === prevHash) {
+                change.record();
+                this.sendUpdates(socket, change, prevHash);
+                this.saveChange(change, function(e) {
+                    if (e) {
+                        console.error(e);
+                    } else {
+                        change.apply();
+                        this.hash = change.hash;
+                    }
+                    this.mutex.release();
+                }.bind(this));
+            } else {
+                console.error("received out-dated change");
+                this.mutex.release();
+            }
+        }.bind(this));
     },
     sendUpdates: function(socket, change, prevHash) {
         console.log('-> ok ' + change.hash);
         socket.emit('ok', change.hash);
         change.send(socket.broadcast.emit.bind(socket.broadcast), prevHash);
     },
+    insertQuery: 'INSERT INTO journal (subject, message, {value} {old} user, timestamp, hash) VALUES (#)',
     saveChange: function(change, cb) {
-        var journalEntry = this.journal.new(change.asJournalEntry());
-        journalEntry.save(function(err) {
-            if (err) return console.error(err);
+        var query = this.insertQuery;
+        var params = [change.subject.getTypedId(), change.message];
+        if (change.value instanceof org.model.Entity) {
+            params.push(change.value.getTypedId());
+            query = query.replace('{value}', 'value_ref, ');
+        } else if (change.value) {
+            params.push(change.serialize(change.value));
+            query = query.replace('{value}', 'value_lit, ');
+        } else {
+            query = query.replace('{value}', '');
+        }
+        if (change.oldValue instanceof org.model.Entity) {
+            params.push(change.oldValue.getTypedId());
+            query = query.replace('{old}', 'old_ref, ');
+        } else if (change.oldValue) {
+            params.push(change.serialize(change.oldValue));
+            query = query.replace('{old}', 'old_lit, ');
+        } else {
+            query = query.replace('{old}', '');
+        }
+        params.push(change.user);
+        params.push(change.timestamp);
+        params.push(change.hash);
+        query = query.replace('#', '?'.times(params.length).split('').join(', '));
+        this.db.run(query, params, function(err) {
+            if (err) return cb(err);
             console.log("stored " + change.hash + ' by ' + change.user);
             clearTimeout(this.bounceTimeout);
             this.bounceTimeout = setTimeout(this.save.bind(this), 10000);

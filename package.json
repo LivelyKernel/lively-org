@@ -7,6 +7,6 @@
     "LivelyKernel": "https://github.com/LivelyKernel/LivelyKernel/tarball/master",
     "socket.io": "0.9.13",
     "moment": "2.0.0",
-    "alfred": "0.5.4"
+    "sqlite3": "2.1.7"
   }
 }
