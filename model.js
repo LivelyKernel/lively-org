@@ -888,7 +888,7 @@ org.model.Entity.subclass('org.model.Note',
 'tagging', {
     hashTagRegEx: /\B#\w+/g,
     getTags: function() {
-        return this.getContent().match(this.hashTagRegEx);
+        return this.getContent().match(this.hashTagRegEx) || [];
     },
     hasTag: function(tag) {
         if (!tag) return true;
