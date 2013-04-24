@@ -521,6 +521,13 @@ org.ui.VBox.subclass('org.ui.NoteList',
 },
 'accessing', {
     getNotes: function() {
+        if (!this.card) {
+            if (this.owner && this.owner.owner instanceof org.ui.Card) {
+                this.card = this.owner.owner;
+            } else {
+                return [];
+            }
+        }
         return this.card.entity.getNotes();
     },
     getStickyNotes: function() {
