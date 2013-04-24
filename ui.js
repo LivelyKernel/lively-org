@@ -260,9 +260,7 @@ Object.subclass('org.ui.Workspace',
     synchronized: function() {
         this.status.status("Synchronized.");
         this.status.ok("Synchronized.", 2000);
-    }
-},
-'sync', {
+    },
     connectViews: function() {
         this.isConnected = true;
         this.world.submorphs
@@ -1773,7 +1771,7 @@ lively.morphic.Text.subclass('org.ui.StatusBox',
 },
 'special', {
     notifyTimeout: function() {
-        this.world().confirm(
+        this.timeoutDialog = this.world().confirm(
             "Lost connection to server! " +
             "Do you want to reload this page? " +
             "(You can also stay on this page " +
@@ -1796,6 +1794,9 @@ lively.morphic.Text.subclass('org.ui.StatusBox',
         }
     },
     ok: function(str, optDuration) {
+        if (this.timeoutDialog) {
+            this.timeoutDialog.removeTopLevel();
+        }
         this.updateStatus(str, this.okColor, optDuration);
         console.log(str);
     },
