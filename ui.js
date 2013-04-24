@@ -276,6 +276,14 @@ Object.subclass('org.ui.Workspace',
             .invoke('disconnect');
     }
 },
+'interaction', {
+    search: function(str) {
+        var sb = this.world.get('SearchBar');
+        if (!sb) return;
+        sb.inputField.textString = str;
+        sb.inputField.focus();
+    }
+},
 'tear down', {
     tearDown: function () {
         this.hideWidgets();
@@ -1396,6 +1404,8 @@ org.ui.View.subclass('org.ui.StickyNote',
         txt.setFixedWidth(true);
         txt.setFixedHeight(false);
         txt.setWordBreak('normal');
+        txt.syntaxHighlighter = new org.ui.Highlighter();
+        txt.enableSyntaxHighlighting();
         txt.addScript(function onEnterPressed(evt) {
             if (!(this.owner instanceof org.ui.StickyNote) ||
                 !evt.isCommandKey()) return $super(evt);
@@ -1548,6 +1558,7 @@ lively.morphic.Box.subclass('org.ui.SearchBar',
         if (UserAgent.isTouch) {
             inputField.disableTextControl()
         }
+        this.inputField = inputField;
         connect(inputField, "textString", this, "search");
         return inputField;
     },
@@ -1836,6 +1847,34 @@ lively.morphic.Text.subclass('org.ui.ChangeLog', {
         this.addText(timestamp, 10, {color: Color.white});
         this.appendRichText("\n", {});
         this.fit();
+    }
+});
+
+lively.ide.SyntaxHighlighter.subclass('org.ui.Highlighter',
+'settings', {
+    minDelay: 300, // ms
+    charLimit: 30000,
+    howToStyleString: function($super, string, rules, defaultStyle) {
+        var rules = $super(string, rules, defaultStyle);
+        return rules.map(function(rule) {
+            if (!rule[2].doit) return rule;
+            rule[2] = Object.clone(rule[2]);
+            rule[2].doit = {
+                code: rule[2].doit.code,
+                context: String(string.substring(rule[0], rule[1]))
+            };
+            return rule;
+        });
+    },
+    rules: {
+        // based on http://code.google.com/p/jquery-chili-js/ regex and colors
+        hashtag: {
+            match: /\B#\w+/g,
+            style: {
+                doit: {code: 'org.ui.Workspace.current().search(this)'},
+                color: Color.black
+            }
+        }
     }
 });
 
