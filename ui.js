@@ -1533,11 +1533,15 @@ org.ui.VBox.subclass('org.ui.SearchBar',
     }
 },
 'searching', {
-    search: function (str) {
+    searchImpl: function (str) {
         var s = str ? str.trim() : '';
         var results = s == '' ? [] : this.hub.search(s);
         this.searchResults.showResults(results);
     },
+    search: function (str) {
+        this.search = Functions.debounce(200, this.searchImpl.bind(this));
+        this.search();
+    }
 },
 'event handling', {
     onTouchStart: function(evt) { evt.stop(); },
