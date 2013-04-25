@@ -1570,7 +1570,21 @@ org.ui.VBox.subclass('org.ui.SearchResults',
 },
 'displaying', {
     showResults: function(results) {
-        this.removeAllMorphs();
+        // matching current morphs with results
+        var matchedMorphs = 0;
+        while (matchedMorphs < this.submorphs.length &&
+               matchedMorphs < results.length &&
+               this.submorphs[matchedMorphs].entity===results[matchedMorphs]) {
+            matchedMorphs++;
+        }
+        this.submorphs.clone().each(function(morph, idx) {
+            if (idx < matchedMorphs) {
+                results.shift(); // keep matching morph
+            } else {
+                morph.remove(); // remove others
+            }
+        });
+
         this.results = results;
         var height = this.getExtent().y,
             shapeNode = this.renderContext().shapeNode;
