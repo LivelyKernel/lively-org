@@ -1,26 +1,26 @@
 module('org.ui').requires('org.model', 'lively.morphic', 'lively.ide.SyntaxHighlighting').toRun(function() {
 
 org.model.Entity.addMethods({
-    createIcon: function() {
+    createIcon: function(verticalList) {
         // override in subclasses
     }
 });
 
 org.model.User.addMethods({
-    createIcon: function(dark) {
-        return new org.ui.UserIcon(this, dark);
+    createIcon: function(verticalList) {
+        return new org.ui.UserIcon(this, verticalList);
     }
 });
 
 org.model.Project.addMethods({
-    createIcon: function() {
-        return new org.ui.ProjectIcon(this);
+    createIcon: function(verticalList) {
+        return new org.ui.ProjectIcon(this, verticalList);
     }
 });
 
 org.model.Note.addMethods({
-    createIcon: function(big) {
-        return new org.ui.NoteIcon(this, big);
+    createIcon: function(verticalList) {
+        return new org.ui.StickyNote(this);
     }
 });
 
@@ -87,13 +87,15 @@ Object.subclass('org.ui.Workspace',
     setupSearchBar: function() {
         if (this.world.get('SearchBar_Flap')) return;
         var zoom = this.world.getZoomLevel(),
-            pos = this.world.getScrollOffset().addPt(pt(5,0)),
-            extent = pt((this.world.visibleBounds().width - 10) * zoom, 150);
+            width = 320,
+            height = this.world.visibleBounds().height - 10,
+            offset = this.world.visibleBounds().width - width - 10,
+            pos = this.world.getScrollOffset().addXY(offset,0),
+            extent = lively.pt(width, height);
         var searchBar = new org.ui.SearchBar(pos.extent(extent), this.hub);
         searchBar.setScale(1/zoom);
-        var flap = searchBar.openInFlap('top');
+        var flap = searchBar.openInFlap('right');
         searchBar.setScale(1);
-        searchBar.setPosition(pt(0,0));
         searchBar.setName('SearchBar');
         if (UserAgent.isTouch) {
             searchBar.invoke('disableSelection');
@@ -336,7 +338,7 @@ org.ui.HBox.subclass('org.ui.IconList',
         }, this);
         // add new users
         newEntities.withoutAll(oldEntities).each(function(ea) {
-            this.addMorph(ea.createIcon(true));
+            this.addMorph(ea.createIcon());
         }, this);
     }
 },
@@ -986,7 +988,7 @@ org.ui.Card.subclass('org.ui.UserCard',
         projectHeader.emphasizeAll({fontWeight: 'bold'});
         projectHeader.disableEvents();
         this.descriptionPane.addMorph(projectHeader);
-        this.projectList = new org.ui.IconList(true);
+        this.projectList = new org.ui.IconList();
         this.descriptionPane.addMorph(this.projectList);
     }
 },
@@ -1071,7 +1073,7 @@ org.ui.Card.subclass('org.ui.ProjectCard',
         memberHeader.emphasizeAll({fontWeight: 'bold'});
         memberHeader.disableEvents();
         this.descriptionPane.addMorph(memberHeader);
-        this.memberList = new org.ui.IconList(true);
+        this.memberList = new org.ui.IconList();
         this.descriptionPane.addMorph(this.memberList);
     },
     initializeHistoryTab: function() {
@@ -1178,11 +1180,11 @@ org.ui.Card.subclass('org.ui.ProjectCard',
 org.ui.View.subclass('org.ui.Icon',
 'settings', {
     defaultExtent: lively.pt(80, 96),
-    bigExtent: lively.pt(160, 96)
+    verticalListExtent: lively.pt(160, 48)
 },
 'initialization', {
-    initialize: function($super, entity, big) {
-        var extent = big ? this.bigExtent : this.defaultExtent;
+    initialize: function($super, entity, verticalList) {
+        var extent = verticalList?this.verticalListExtent:this.defaultExtent;
         $super(extent.extentAsRectangle(), entity);
         var layouter = new lively.morphic.Layout.VerticalLayout(this);
         layouter.setBorderSize(5);
@@ -1253,11 +1255,12 @@ org.ui.View.subclass('org.ui.Icon',
 
 org.ui.Icon.subclass('org.ui.UserIcon',
 'settings', {
-    avatarExtent: lively.pt(50, 50)
+    avatarExtent: lively.pt(50, 50),
+    verticalListExtent: lively.pt(160, 76)
 },
 'initialization', {
-    initialize: function($super, user, dark) {
-        $super(user);
+    initialize: function($super, user, verticalList) {
+        $super(user, verticalList);
 
         var avatarBounds = lively.pt(0,0).extent(this.avatarExtent);
         var avatar = new lively.morphic.Image(avatarBounds, user.getImageURL());
@@ -1265,25 +1268,24 @@ org.ui.Icon.subclass('org.ui.UserIcon',
         avatar.disableEvents();
         this.addMorph(avatar);
         this.avatar = avatar;
+        this.color = verticalList ? Color.rgb(235, 235, 235) : Color.black;
 
-        var textColor = dark ? Color.black : Color.rgba(234,234,234);
-
-        var firstname = new lively.morphic.Text(lively.rect(0,0,0,16));
-        firstname.beLabel();
-        firstname.textString = user.getFirstName().truncate(13);
-        firstname.applyStyle({resizeWidth: true, textColor: textColor, align: 'center'});
-        firstname.disableEvents();
-        this.addMorph(firstname);
-        this.firstname = firstname;
-
-        var lastname = new lively.morphic.Text(lively.rect(0,0,0,16));
-        lastname.beLabel();
-        lastname.setAlign('center');
-        lastname.textString = user.getLastName().truncate(13);
-        lastname.applyStyle({resizeWidth: true, textColor: textColor, align: 'center'});
-        lastname.disableEvents();
-        this.addMorph(lastname);
-        this.lastname = lastname;
+        if (verticalList) {
+            this.fullname = this.createTextMorph(user.getName(), true);
+        } else {
+            this.firstname = this.createTextMorph(user.getFirstName());
+            this.lastname = this.createTextMorph(user.getLastName());
+        }
+    },
+    createTextMorph: function(str, long) {
+        var txt = new lively.morphic.Text(lively.rect(0,0,0,16));
+        txt.beLabel();
+        txt.setAlign('center');
+        txt.textString = str.truncate(long ? 27 : 13);
+        txt.applyStyle({resizeWidth: true, textColor: this.color});
+        txt.disableEvents();
+        this.addMorph(txt);
+        return txt;
     }
 },
 'interaction', {
@@ -1294,15 +1296,19 @@ org.ui.Icon.subclass('org.ui.UserIcon',
 'updating', {
     doUpdate: function() {
         this.avatar.setImageURL(this.entity.getImageURL());
-        this.firstname.textString = this.entity.getFirstName().truncate(13);
-        this.lastname.textString = this.entity.getLastName().truncate(13);
+        if (this.fullname) {
+            this.fullname.textString = this.entity.getName().truncate(27);
+        } else {
+            this.firstname.textString = this.entity.getFirstName().truncate(13);
+            this.lastname.textString = this.entity.getLastName().truncate(13);
+        }
     }
 });
 
 org.ui.Icon.subclass('org.ui.ProjectIcon',
 'initialization', {
-    initialize: function($super, project) {
-        $super(project);
+    initialize: function($super, project, verticalList) {
+        $super(project, verticalList);
         var text = new lively.morphic.Text();
         text.beLabel();
         text.setAlign('center');
@@ -1335,40 +1341,6 @@ org.ui.Icon.subclass('org.ui.ProjectIcon',
     }
 });
 
-org.ui.Icon.subclass('org.ui.NoteIcon',
-'settings', {
-    defaultExtent: lively.pt(80, 64),
-    bigExtent: lively.pt(160, 64)
-},
-'initialization', {
-    initialize: function($super, note, big) {
-        $super(note, big);
-        var txt = new lively.morphic.Text();
-        txt.layout = {resizeWidth: true, resizeHeight: true};
-        txt.addStyleClassName('StickyNote');
-        txt.setFill(null);
-        txt.setBorderStylingMode(true);
-        txt.setFontFamily("verdana, sans");
-        txt.setFontSize(9);
-        txt.setWordBreak('normal');
-        var length = big ? 64 : 23;
-        txt.textString = note.getContent().truncate(length);
-        txt.disableEvents();
-        txt.setPadding(lively.rect(5, 5, 0, 0));
-        this.addMorph(txt);
-        this.text = txt;
-    }
-},
-'interaction', {
-    createCard: function() {
-        return new org.ui.StickyNote(this.entity);
-    }
-},
-'updating', {
-    doUpdate: function() {
-        this.text.textString = this.entity.getContent().truncate(23);
-    }
-});
 
 org.ui.View.subclass('org.ui.StickyNote',
 'settings', {
@@ -1450,6 +1422,10 @@ org.ui.View.subclass('org.ui.StickyNote',
     onDragStart: function($super, evt) {
         if (this.owner instanceof org.ui.NoteList) {
             this.owner.entity.removeNote(this.entity);
+        } else if(this.owner instanceof org.ui.SearchResults) {
+            var note = new org.ui.StickyNote(this.entity);
+            this.world().firstHand().grabMorph(note);
+            return true;
         }
         return $super(evt);
     }
@@ -1483,6 +1459,9 @@ org.ui.View.subclass('org.ui.StickyNote',
         note.setPosition(this.globalBounds().bottomLeft().addXY(0, 5));
         note.submorphs.first().focus();
         return note;
+    },
+    setGrabDirection: function() {
+        // do nothing
     }
 },
 'updating', {
@@ -1522,70 +1501,35 @@ org.ui.View.subclass('org.ui.StickyNote',
     }
 });
 
-lively.morphic.Box.subclass('org.ui.SearchBar',
+org.ui.VBox.subclass('org.ui.SearchBar',
 'initialization', {
     initialize: function($super, bounds, entityHub) {
-        $super(bounds);
+        $super(5, 5);
+        this.setBounds(bounds);
         this.hub = entityHub;
-        this.layout = {adjustForNewBounds: true};
-        var layouter = new lively.morphic.Layout.VerticalLayout(this);
-        layouter.setSpacing(5);
-        layouter.setBorderSize(5);
-        this.setLayouter(layouter);
+        this.initializeSearchField();
+        this.initializeSearchResults();
         this.applyLayout();
-        this.searchResults = this.initializeSearchResults();
-        this.searchField = this.initializeSearchField();
     },
     initializeSearchField: function() {
-        var sf = new lively.morphic.Box(rect(0,0,this.getExtent().x,30)),
-            sf_layouter = new lively.morphic.Layout.HorizontalLayout(sf),
-            searchIcon = this.createSearchIcon(),
-            inputField = this.createInputField();
-        searchIcon.inputField = inputField;
-        sf.applyStyle({resizeWidth: true, resizeHeight: false});
-        sf.setLayouter(sf_layouter);
-        sf_layouter.setHandlesSubmorphResized(true);
-        sf_layouter.setBorderSize(3)
-        sf.applyLayout();
-        sf.setName('SearchField')
-        sf.addMorph(searchIcon);
-        sf.addMorph(inputField);
-        return this.addMorph(sf)
-    },
-    createInputField: function() {
         var inputField = new lively.morphic.Text(rect(0,0,100,30))
         inputField.applyStyle({
             resizeWidth: true,
             resizeHeight: false,
             borderRadius: 6});
         inputField.setFontSize(16);
+        inputField.setFixedWidth(true);
         inputField.setFixedHeight(true);
-        if (UserAgent.isTouch) {
-            inputField.disableTextControl()
-        }
         this.inputField = inputField;
         connect(inputField, "textString", this, "search");
-        return inputField;
-    },
-    createSearchIcon: function() {
-        var searchURL = URL.root.withFilename('org/media/search.png'),
-            searchIcon = new lively.morphic.ImageButton(rect(0,0,30,30), searchURL);
-        searchIcon.image.setScale(.2);
-        searchIcon.image.setPosition(UserAgent.isTouch ? pt(2,2) : pt(-10.5,3.2));
-        searchIcon.applyStyle({
-            resizeWidth: false,
-            resizeHeight: true
-        });
-        connect(searchIcon, "fire", this, "search", {
-            converter: function () {
-                return this.sourceObj.inputField.getTextString();
-            }
-        });
-        return searchIcon;
+        this.searchField = inputField;
+        this.addMorph(this.searchField);
     },
     initializeSearchResults: function() {
-        var results = new org.ui.SearchResults(rect(0,0,this.getExtent().x,105));
-        return this.addMorph(results);
+        var extent = this.getExtent().addXY(-20, -100);
+        var bounds = extent.extentAsRectangle();
+        this.searchResults = new org.ui.SearchResults(bounds);
+        this.addMorph(this.searchResults);
     }
 },
 'searching', {
@@ -1601,69 +1545,62 @@ lively.morphic.Box.subclass('org.ui.SearchBar',
     onTouchEnd: function(evt) { evt.stop(); }
 });
 
-lively.morphic.Box.subclass('org.ui.SearchResults',
+org.ui.VBox.subclass('org.ui.SearchResults',
 'initialization', {
-    initialize: function($super, extensions) {
-        $super(extensions);
-        var scrollContainer = new lively.morphic.Box(rect(0,0,0,this.getExtent().y));
-        var layouter = new lively.morphic.Layout.HorizontalLayout(scrollContainer);
-        layouter.setBorderSize(0)
+    initialize: function($super) {
+        var borderSize = {top: 0, left: 0, right: 20, bottom: 10};
+        $super(borderSize, 0);
         this.applyStyle({
-            resizeHeight: false,
+            resizeHeight: true,
             resizeWidth: true,
-            clipMode: {x: 'auto', y: 'hidden'}});
-        scrollContainer.applyStyle({
-            resizeWidth: false
-        });
-        scrollContainer.setLayouter(layouter);
-        scrollContainer.applyLayout();
-        scrollContainer.disableGrabbing();
-        scrollContainer.getLayouter().setHandlesSubmorphResized(true);
-        if (UserAgent.isTouch)
-            scrollContainer.beHorizontalScroll();
+            clipMode: {x: 'hidden', y: 'auto'}});
         this.setName('SearchResults');
-        this.addMorph(scrollContainer);
-        this.scrollContainer = scrollContainer;
+        this.results = [];
     }
+},
+'serialization', {
+    onstore: function() {
+        this.removeAllMorphs();
+    },
+    doNotSerialize: ['results']
 },
 'displaying', {
     showResults: function(results) {
-        this.scrollContainer.removeAllMorphs();
-        this.scrollContainer.setExtent(pt(0, this.scrollContainer.getExtent().y))
-        this.showMore(results);
-    },
-    showMore: function(results) {
-        var that = this,
-            sm = this.get('showMore');
-        if (sm) sm.remove();
-        var displayable = this.displayableEntities();
-        if (results.length > displayable) {
-            var more = this.createMoreIcon();
-            var reactFunction = function() { // too many local references here to add as Script
-                that.showMore(results.slice(displayable, results.length));
-            };
-            more.onMouseUp = reactFunction;
-            more.onTap = reactFunction;
-            results.slice(0, displayable).each(this.createIcon.bind(this));
-            this.scrollContainer.addMorph(more);
-        } else {
-            results.each(this.createIcon.bind(this));
+        this.removeAllMorphs();
+        this.results = results;
+        var height = this.getExtent().y,
+            shapeNode = this.renderContext().shapeNode;
+        while (this.results.length > 0 && shapeNode.scrollHeight <= height) {
+            this.showNext();
+        }
+        if (this.results.length > 0) {
+            this.createMoreIcon();
         }
     },
-    createIcon: function(entity) {
-        var icon = entity.createIcon();
-        icon.setGrabDirection('vertical');
-        icon.setPosition(pt(this.scrollContainer.submorphs.length * 100, 0));
-        this.scrollContainer.addMorph(icon);
+    showNext: function() {
+        if (this.results.length === 0) return;
+        var next = this.results.shift();
+        this.createIcon(next);
     },
-    displayableEntities: function() {
-        // returns the number of displayable entities based on flap extent
-        var layouter = this.scrollContainer.getLayouter(),
-            width = this.getExtent().x,
-            spacing = layouter.getBorderSize('left') + layouter.getBorderSize('right')
-                    + layouter.getSpacing();
-        // this calculates one spacing too much
-        return Math.floor((width - spacing) / (80 + layouter.getSpacing())) - 1;
+    numberToShowMore: 10,
+    showMore: function() {
+        var oldScroll = this.jQuery().scrollTop();
+        var sm = this.get('showMore');
+        if (sm) sm.remove();
+        for (var i = 0; i < this.numberToShowMore; i++) {
+            this.showNext();
+        }
+        if (this.results.length > 0) {
+            this.createMoreIcon();
+        }
+        this.jQuery().scrollTop(oldScroll);
+    },
+    createIcon: function(entity) {
+        var icon = entity.createIcon(true);
+        icon.setGrabDirection('vertical');
+        icon.setPosition(pt(this.submorphs.length * 100, 0));
+        icon.applyStyle({resizeWidth: true, resizeHeight: false});
+        this.addMorph(icon);
     },
     createMoreIcon: function() {
         var more = new lively.morphic.Text(pt(99000,0).extent(pt(80,80)), "...");
@@ -1675,10 +1612,16 @@ lively.morphic.Box.subclass('org.ui.SearchResults',
         more.disableGrabbing();
         more.setInputAllowed(false);
         more.setName('showMore');
-        return more;
-    },
-    getContainer: function() {
-        return UserAgent.isTouch ? this.scrollContainer : this;
+        more.layout = {resizeWidth: true};
+        this.addMorph(more);
+    }
+},
+'interaction', {
+    onScroll: function(evt) {
+        var total = this.jQuery().scrollTop() + this.getExtent().y;
+        if (total == this.renderContext().shapeNode.scrollHeight) {
+            this.showMore();
+        }
     }
 });
 
