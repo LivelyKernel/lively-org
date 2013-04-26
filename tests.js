@@ -259,6 +259,12 @@ org.tests.Base.subclass('org.tests.ModelTests',
         expectedTags.each(function(tag) {
             this.assert(note.hasTag(tag));
         }, this);
+    },
+    testSearchGroupsForNotes: function() {
+        var note = this.hub.createNote();
+        this.assertEquals('Today', note.getSearchGroup());
+        note.setCreationDate(new Date(2008, 11, 24));
+        this.assertEquals('24 Dec 2008', note.getSearchGroup());
     }
 });
 

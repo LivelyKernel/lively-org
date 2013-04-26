@@ -14,6 +14,16 @@ lively.whenLoaded(function() {
             LT: "HH:mm"
         }
     });
+    moment.lang('en-d', {
+        calendar: {
+            sameDay: '[Today]',
+            nextDay: '[Tomorrow]',
+            nextWeek: 'dddd',
+            lastDay: '[Yesterday]',
+            lastWeek: '[last] dddd',
+            sameElse: 'D MMM YYYY'
+        }
+    });
 });
 
 Object.subclass('org.model.EntityHub',
@@ -767,6 +777,9 @@ org.model.Entity.subclass('org.model.User',
             this.getPhone(), this.getOffice(), this.getCompany()
         ];
         return results.join(' ');
+    },
+    getSearchGroup: function() {
+        return "Users";
     }
 });
 
@@ -837,6 +850,9 @@ org.model.Entity.subclass('org.model.Project',
 'searching', {
     getSearchDocument: function() {
         return this.getName() + ' ' + this.getDescription() + this.getParts().join(' ');
+    },
+    getSearchGroup: function() {
+        return "Projects";
     }
 });
 
@@ -862,9 +878,9 @@ org.model.Entity.subclass('org.model.Note',
     getCreationDateInEnglish: function() {
         var creation = moment(this.getCreationDate());
         if (moment().diff(creation, 'hours') < 12) {
-            return creation.fromNow();
+            return creation.lang('en').fromNow();
         } else {
-            return creation.calendar();
+            return creation.lang('en').calendar();
         }
     },
     getCreator: function() {
@@ -908,6 +924,10 @@ org.model.Entity.subclass('org.model.Note',
     getSearchDocument: function() {
         var creator = this.getCreator();
         return this.getContent() + (creator ? ' ' + creator.getName() : '');
+    },
+    getSearchGroup: function() {
+        var creation = moment(this.getCreationDate());
+        return creation.lang('en-d').calendar();
     }
 });
 
