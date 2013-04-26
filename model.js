@@ -215,6 +215,15 @@ Object.subclass('org.model.EntityHub',
         this.tokenize(entity.getSearchDocument())
             .each(this.addIndexEntry.bind(this, entity));
     },
+    matchesKeywords: function(entity, keywords) {
+        var tokens = this.tokenize(entity.getSearchDocument());
+        for (var i = 0; i < tokens.length; i++) {
+            for (var j = 0; j < keywords.length; j++) {
+                if (tokens[i].startsWith(keywords[j])) return true;
+            }
+        }
+        return false;
+    },
     lookup: function(keyword) {
         var i = -1, l = this.index, n = keyword.length;
         while (l && (++i < n)) l = l[keyword[i]];
@@ -227,9 +236,11 @@ Object.subclass('org.model.EntityHub',
         for (var i = 1; i < keywords.length; i++) {
             results = results.intersect(this.lookup(keywords[i]));
         }
-        return results
-            .slice(0,200)
-            .select(function(e) { return !!this.get(e.getTypedId()) }, this);
+        return results.slice(0,200).select(function(e) {
+            if (!this.get(e.getTypedId())) return false;
+            if (!this.matchesKeywords(e, keywords)) return false;
+            return true;
+        }, this);
     },
     searchSortByTypeAndDate: function(query) {
         return this.search(query).sortBy(function(entity) {

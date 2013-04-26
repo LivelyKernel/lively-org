@@ -187,6 +187,9 @@ org.tests.Base.subclass('org.tests.ModelTests',
         this.assertEqualState([], this.hub.search("loren"));
         this.assertEqualState([note], this.hub.search("lor"));
         this.assertEqualState([], this.hub.search("olo"));
+        note.setContent('orem ipsum dolor sit amet');
+        this.assertEqualState([], this.hub.search("Lorem"));
+        this.assertEqualState([], this.hub.search("Lor"));
     },
     testAttachNote: function() {
         var note = this.hub.createNote();
