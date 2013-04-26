@@ -958,7 +958,6 @@ org.ui.Card.subclass('org.ui.UserCard',
                 uri: "mailto:" + email
             });
         }
-        var company = this.entity.getCompany();
         var phone = this.entity.getPhone();
         if (phone) {
             this.info.appendRichText('\nPhone: ' + phone, {});
@@ -966,11 +965,8 @@ org.ui.Card.subclass('org.ui.UserCard',
         var office = this.entity.getOffice();
         if (office) {
             this.info.appendRichText('\n' + office, {});
-            //this.info.appendRichText(this.entity.getOffice(), {
-            //    color: Color.gray.darker(2),
-            //    doit: {code: 'this.openOffice()', context: this}
-            //});
         }
+        var company = this.entity.getCompany();
         if (company) {
             this.info.appendRichText('\n' + company, {});
         }
