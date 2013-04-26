@@ -1,5 +1,21 @@
 module('org.model').requires('lively.persistence.Serializer').requiresLib({url:Config.rootPath+'org/node_modules/moment/moment.js',loadTest:function(){return!!Global.moment}}).toRun(function(){
 
+lively.whenLoaded(function() {
+    moment.lang('en', {
+        calendar: {
+            sameDay: '[Today at] LT',
+            nextDay: '[Tomorrow at] LT',
+            nextWeek: 'dddd [at] LT',
+            lastDay: '[Yesterday at] LT',
+            lastWeek: '[last] dddd [at] LT',
+            sameElse: 'D MMM YYYY'
+        },
+        longDateFormat: {
+            LT: "HH:mm"
+        }
+    });
+});
+
 Object.subclass('org.model.EntityHub',
 'initialization', {
     initialize: function() {
