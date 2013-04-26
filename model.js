@@ -741,12 +741,6 @@ org.model.Entity.subclass('org.model.User',
         // do not actually set url but update views
         this.changed("=imageURL");
     },
-    getDepartment: function() {
-        return this.department;
-    },
-    setDepartment: function(department) {
-        this.set('department', department);
-    },
     getPhone: function() {
         return this.phone;
     },
@@ -770,8 +764,7 @@ org.model.Entity.subclass('org.model.User',
     getSearchDocument: function() {
         var results = [
             this.getFirstName(), this.getLastName(),
-            this.getPhone(), this.getOffice(),
-            this.getDepartment(), this.getCompany()
+            this.getPhone(), this.getOffice(), this.getCompany()
         ];
         return results.join(' ');
     }
