@@ -1531,7 +1531,7 @@ org.ui.VBox.subclass('org.ui.SearchBar',
 'searching', {
     searchImpl: function (str) {
         var s = str ? str.trim() : '';
-        var results = s == '' ? [] : this.hub.search(s);
+        var results = s == '' ? [] : this.hub.searchSortByTypeAndDate(s);
         this.searchResults.showResults(results);
     },
     search: function (str) {
@@ -1567,13 +1567,14 @@ org.ui.VBox.subclass('org.ui.SearchResults',
 'displaying', {
     showResults: function(results) {
         // matching current morphs with results
-        var matchedMorphs = 0;
-        while (matchedMorphs < this.submorphs.length &&
+        var morphs = this.submorphs.reject(function(m) { return m.isGroup }),
+            matchedMorphs = 0;
+        while (matchedMorphs < morphs.length &&
                matchedMorphs < results.length &&
-               this.submorphs[matchedMorphs].entity===results[matchedMorphs]) {
+               morphs[matchedMorphs].entity===results[matchedMorphs]){
             matchedMorphs++;
         }
-        this.submorphs.clone().each(function(morph, idx) {
+        morphs.clone().each(function(morph, idx) {
             if (idx < matchedMorphs) {
                 results.shift(); // keep matching morph
             } else {
@@ -1581,20 +1582,35 @@ org.ui.VBox.subclass('org.ui.SearchResults',
             }
         });
 
+        // remove empty groups
+        for (var i = this.submorphs.length - 1; i >= 0; i--) {
+            if (this.submorphs[i].isGroup) {
+                var next = this.submorphs[i+1];
+                if (!next || next.isGroup) this.submorphs[i].remove();
+            }
+        }
+
+        // add results until screen is about full
         this.results = results;
         var height = this.getExtent().y,
             shapeNode = this.renderContext().shapeNode;
         while (this.results.length > 0 && shapeNode.scrollHeight <= height) {
             this.showNext();
         }
+        // indicate more results
         if (this.results.length > 0) {
             this.createMoreIcon();
         }
     },
     showNext: function() {
         if (this.results.length === 0) return;
-        var next = this.results.shift();
-        this.createIcon(next);
+        var nextResult = this.results.shift(),
+            nextGroup = nextResult.getSearchGroup();
+        if (this.submorphs.length == 0 ||
+            this.submorphs.last().entity.getSearchGroup() !== nextGroup) {
+            this.createGroup(nextGroup);
+        }
+        this.createIcon(nextResult);
     },
     numberToShowMore: 10,
     showMore: function() {
@@ -1609,6 +1625,20 @@ org.ui.VBox.subclass('org.ui.SearchResults',
         }
         this.jQuery().scrollTop(oldScroll);
     },
+    createGroup: function(nextGroup) {
+        var group = new lively.morphic.Text(lively.rect(0,0,80,24), nextGroup);
+        group.setFontSize(11);
+        group.setAlign('center');
+        group.setBorderWidth(0);
+        group.setFill(null);
+        group.setTextColor(Color.white);
+        group.disableGrabbing();
+        group.setInputAllowed(false);
+        group.isGroup = true;
+        group.layout = {resizeWidth: true};
+        group.emphasizeAll({fontWeight: 'bold'});
+        this.addMorph(group);
+    },
     createIcon: function(entity) {
         var icon = entity.createIcon(true);
         icon.setGrabDirection('vertical');
@@ -1617,7 +1647,7 @@ org.ui.VBox.subclass('org.ui.SearchResults',
         this.addMorph(icon);
     },
     createMoreIcon: function() {
-        var more = new lively.morphic.Text(pt(99000,0).extent(pt(80,80)), "...");
+        var more = new lively.morphic.Text(lively.rect(0,0,80,80), "...");
         more.setFontSize(30);
         more.setAlign('center');
         more.setBorderWidth(0);

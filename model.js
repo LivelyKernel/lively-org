@@ -227,7 +227,14 @@ Object.subclass('org.model.EntityHub',
         for (var i = 1; i < keywords.length; i++) {
             results = results.intersect(this.lookup(keywords[i]));
         }
-        return results.slice(0,80).select(function(e) { return !!this.get(e.getTypedId()) }, this);
+        return results
+            .slice(0,200)
+            .select(function(e) { return !!this.get(e.getTypedId()) }, this);
+    },
+    searchSortByTypeAndDate: function(query) {
+        return this.search(query).sortBy(function(entity) {
+            return entity.getTypeAndDateSearchRating();
+        });
     }
 },
 'serialization', {
@@ -685,6 +692,9 @@ Object.subclass('org.model.Entity',
 'searching', {
     getSearchDocument: function() {
         return '';
+    },
+    getTypeAndDateSearchRating: function() {
+        return 0;
     }
 });
 
@@ -780,6 +790,9 @@ org.model.Entity.subclass('org.model.User',
     },
     getSearchGroup: function() {
         return "Users";
+    },
+    getTypeAndDateSearchRating: function() {
+        return 10;
     }
 });
 
@@ -853,6 +866,9 @@ org.model.Entity.subclass('org.model.Project',
     },
     getSearchGroup: function() {
         return "Projects";
+    },
+    getTypeAndDateSearchRating: function() {
+        return 1e12;
     }
 });
 
@@ -928,6 +944,9 @@ org.model.Entity.subclass('org.model.Note',
     getSearchGroup: function() {
         var creation = moment(this.getCreationDate());
         return creation.lang('en-d').calendar();
+    },
+    getTypeAndDateSearchRating: function($super) {
+        return 3e12 - this.getCreationDate().getTime();
     }
 });
 
