@@ -1416,8 +1416,9 @@ org.ui.View.subclass('org.ui.StickyNote',
         }
     },
     onDragStart: function($super, evt) {
-        if (this.owner instanceof org.ui.NoteList) {
-            this.owner.entity.removeNote(this.entity);
+        if (this.owner instanceof org.ui.NoteList &&
+            this.owner.card.entity instanceof org.model.Entity) {
+            this.owner.card.entity.removeNote(this.entity);
         } else if(this.owner instanceof org.ui.SearchResults) {
             var note = new org.ui.StickyNote(this.entity);
             this.world().firstHand().grabMorph(note);
