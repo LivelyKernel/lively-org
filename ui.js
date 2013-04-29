@@ -366,8 +366,8 @@ org.ui.HBox.subclass('org.ui.IconList',
     }
 },
 'updating', {
-    connect: function() {
-        this.submorphs.invoke('connect');
+    connect: function(hub) {
+        this.submorphs.invoke('connect', hub);
     },
     disconnect: function() {
         this.submorphs.invoke('disconnect');
