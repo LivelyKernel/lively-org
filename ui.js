@@ -1,25 +1,28 @@
-module('org.ui').requires('org.model', 'lively.morphic', 'lively.ide.SyntaxHighlighting').toRun(function() {
-
-org.model.Entity.addMethods({
-    createIcon: function(verticalList) {
-        // override in subclasses
-    }
-});
+module('org.ui').requires('org.widgets', 'lively.ide.SyntaxHighlighting').toRun(function() {
 
 org.model.User.addMethods({
     createIcon: function(verticalList) {
         return new org.ui.UserIcon(this, verticalList);
+    },
+    createCard: function() {
+        return new org.ui.UserCard(this);
     }
 });
 
 org.model.Project.addMethods({
     createIcon: function(verticalList) {
         return new org.ui.ProjectIcon(this, verticalList);
+    },
+    createCard: function() {
+        return new org.ui.ProjectCard(this);
     }
 });
 
 org.model.Note.addMethods({
     createIcon: function(verticalList) {
+        return new org.ui.StickyNote(this);
+    },
+    createCard: function() {
         return new org.ui.StickyNote(this);
     }
 });
@@ -29,36 +32,6 @@ Object.extend(org.ui, {
     blue: Color.fromString('#FF3333'),
     lightRed: Color.fromString('#E6D4D4'),
     red: Color.fromString('#337F7F')
-});
-
-lively.morphic.Box.subclass("org.ui.Box", {
-    initialize: function($super, layoutClass, padding, spacing) {
-        $super(lively.rect(0, 0, 105, 105));
-        this.ignoreEvents();
-        this.layout = {resizeWidth: true, resizeHeight: true};
-        var layouter = new layoutClass(this);
-        layouter.setBorderSize(padding === undefined ? 20 : padding);
-        layouter.setSpacing(spacing === undefined ? 20 : spacing);
-        layouter.displaysPlaceholders = Functions.False;
-        layouter.setHandlesSubmorphResized(true);
-        Object.addScript(layouter, function orderedSubmorphs(submorphs) {
-            return submorphs.reject(function(ea) {
-                return ea.isEpiMorp || !ea.isLayoutable;
-            });
-        });
-    }
-});
-
-org.ui.Box.subclass("org.ui.HBox", {
-    initialize: function($super, padding, spacing) {
-        $super(lively.morphic.Layout.HorizontalLayout, padding, spacing);
-    }
-});
-
-org.ui.Box.subclass("org.ui.VBox", {
-    initialize: function($super, padding, spacing) {
-        $super(lively.morphic.Layout.VerticalLayout, padding, spacing);
-    }
 });
 
 Object.subclass('org.ui.Workspace',
@@ -318,352 +291,10 @@ Object.extend(org.ui.Workspace, {
     }
 });
 
-org.ui.HBox.subclass('org.ui.IconList',
-'initialization', {
-    initialize: function($super) {
-        $super(0, 0);
-        this.layout.resizeHeight = false;
-        this.setBorderRadius(5);
-        this.setClipMode(UserAgent.isTouch ? 'hidden' : {x: 'auto', y: 'hidden'});
-    }
-},
-'entities', {
-    updateEntities: function(newEntities) {
-        var oldEntities = this.submorphs.map(function(m) {
-            return m.entity;
-        });
-        // remove obsolete users
-        oldEntities.withoutAll(newEntities).each(function(ea) {
-            this.submorphs.find(function(m) { return m.entity == ea; }).remove();
-        }, this);
-        // add new users
-        newEntities.withoutAll(oldEntities).each(function(ea) {
-            this.addMorph(ea.createIcon());
-        }, this);
-    }
-},
-'iPad', {
-    onTouchStart: function(evt) {
-        evt.stop();
-        var touch = evt.touches[0];
-        if(touch) {
-            touch.originalDragOffset = touch.screenY;
-            touch.originalMenuOffset = this.getPosition().y;
-        }
-        return true;
-    },
-    onTouchMove: function(evt) {
-        evt.stop();
-        var touch = evt.touches[0];
-        if (touch && touch.originalDragOffset && !touch.draggingCanceled) {
-            var delta = (touch.screenY - touch.originalDragOffset);
-            var pos = touch.originalMenuOffset+delta;
-            pos = Math.max(-this.getExtent().y + this.owner.getExtent().y, pos);
-            pos = Math.min(0,pos);
-            this.setPosition(pt(0,pos));
-        }
-        return true;
-    }
-},
-'updating', {
-    connect: function(hub) {
-        this.submorphs.invoke('connect', hub);
-    },
-    disconnect: function() {
-        this.submorphs.invoke('disconnect');
-    }
-});
-
-lively.morphic.Text.subclass('org.ui.Tag',
-'settings', {
-    defaultHeight: 20
-},
-'initialization', {
-    initialize: function($super, tagName) {
-        var label = tagName ? tagName : 'all';
-        var extent = lively.pt(label.length * 12, this.defaultHeight);
-        $super(extent.extentAsRectangle(), label);
-        this.tagName = tagName;
-        this.setBorderRadius(6);
-        this.setFixedWidth(true);
-        this.setFixedHeight(true);
-        this.setFontSize(10);
-        this.setAlign('center');
-        this.setInputAllowed(false);
-    },
-    removeUnlessInTags: function(tags) {
-        if (this.tagName && !tags.include(this.tagName)) {
-            this.remove();
-        }
-    }
-},
-'events', {
-    onMouseDown: function(evt) {
-        if (evt.isLeftMouseButtonDown()) {
-            this.owner.owner.setFilter(this.tagName);
-        }
-    }
-},
-'activation', {
-    setActive: function(tagName) {
-        if (this.tagName === tagName) {
-            this.activate();
-        } else {
-            this.deactivate();
-        }
-    },
-    activate: function() {
-        this.setFill(new Color(0.3, 0.3, 0.3));
-        this.setTextColor(Color.white);
-    },
-    deactivate: function() {
-        this.setFill(new Color(0.9, 0.9, 0.9));
-        this.setTextColor(new Color(0.3, 0.3, 0.3));
-    }
-});
-
-org.ui.HBox.subclass('org.ui.TagList',
-'settings', {
-    defaultHeight: 20,
-    updateNoteBufferTime: 500
-},
-'initialization', {
-    initialize: function($super) {
-        $super(5, 5);
-        this.layout.resizeHeight = false;
-        this.setExtent(lively.pt(100, this.defaultHeight));
-    }
-},
-'user interface', {
-    createTagMorph: function(tagName) {
-        var tag = new org.ui.Tag(tagName);
-        tag.setActive(this.owner.filter);
-        this.addMorph(tag);
-    },
-    setFilter: function(filter) {
-        this.submorphs.invoke('setActive', filter);
-    }
-},
-'updating', {
-    updateTags: function(tags) {
-        if (tags.length == 0) { // trivial case
-            this.removeAllMorphs();
-            this.setExtent(lively.pt(this.getExtent().x, 0));
-            this.owner.setFilter();
-            return;
-        }
-        // remove obsolete tags
-        this.submorphs.invoke('removeUnlessInTags', tags);
-        // add new tags (undefined means 'all')
-        tags.unshift(undefined);
-        var currentTags = this.submorphs.pluck('tagName');
-        tags.each(function(tag) {
-            if (!currentTags.include(tag)) {
-                this.createTagMorph(tag);
-            }
-        }, this);
-        // fallback to 'all' if no other tag is selected
-        if (!this.submorphs.any(function(m) {
-            return m.tagName === this.owner.filter;
-        }, this)) this.owner.setFilter("all");
-    },
-    updateNotes: function() {
-        this.updateNotes = Functions.debounce(
-            this.updateNoteBufferTime,
-            this.updateNotesImpl.bind(this));
-        this.updateNotes();
-    },
-    updateNotesImpl: function() {
-        var notes = this.owner.getNotes();
-        var tags = [];
-        notes.each(function(note) {
-            var foundTags = note.getTags();
-            if (foundTags) foundTags.each(function(t) {
-                tags.pushIfNotIncluded(t);
-            });
-        }, this);
-        this.updateTags(tags);
-    }
-});
-
-org.ui.VBox.subclass('org.ui.NoteList',
-'initialization', {
-    initialize: function($super, card) {
-        var borderSize = {top: 0, left: 0, right: 20, bottom: 10};
-        $super(borderSize, 0);
-        this.card = card;
-        //TODO: Make this a view
-        this.setClipMode({x: 'hidden', y: 'auto'});
-        this.initializeTagList();
-        this.initializeCreateNote();
-        this.tagList.updateNotes();
-    },
-    initializeTagList: function() {
-        this.tagList = new org.ui.TagList();
-        this.addMorph(this.tagList);
-    },
-    setFilter: function(hashtag) {
-        if (hashtag === this.filter) return; // do nothing
-        this.filter = hashtag;
-        this.tagList.setFilter(this.filter);
-        this.update();
-    },
-    initializeCreateNote: function() {
-        var bounds = lively.pt(100, 20).extentAsRectangle();
-        this.createNote = new lively.morphic.Text(bounds, 'Add new note');
-        this.createNote.layout = {centeredHorizontal: true};
-        this.createNote.setFill(null);
-        this.createNote.setBorderWidth(0);
-        this.createNote.emphasizeAll({color: Color.black, doit: {
-            code: 'this.addNewNote()',
-            context: this
-        }});
-        this.addMorph(this.createNote);
-    }
-},
-'accessing', {
-    getNotes: function() {
-        if (!this.card) {
-            if (this.owner && this.owner.owner instanceof org.ui.Card) {
-                this.card = this.owner.owner;
-            } else {
-                return [];
-            }
-        }
-        return this.card.entity.getNotes();
-    },
-    getStickyNotes: function() {
-        return this.submorphs.select(function(m) {
-            return m instanceof org.ui.StickyNote;
-        });
-    }
-},
-'entities', {
-    addNewNote: function() {
-        var hub = org.ui.Workspace.current().hub;
-        var newNote = hub.createNote();
-        if (this.filter) newNote.setContent(' ' + this.filter);
-        this.card.entity.addNote(newNote);
-        var sticky = this.getStickyForEntity(newNote);
-        sticky.submorphs.first().focus();
-        this.scrollToBottom();
-    },
-    addNote: function(noteEntity) {
-        var note = new org.ui.StickyNote(noteEntity);
-        note.layout.resizeWidth = true;
-        this.addMorph(note);
-        noteEntity.onChanged('content', this.tagList, 'updateNotes');
-        return note;
-    },
-    getStickyForEntity: function(entity) {
-        return this.getStickyNotes()
-            .find(function(m) { return m.entity == entity; });
-    }
-},
-'updating', {
-    update: function() {
-        var newEntities = this.getNotes().select(function(note) {
-            return note.hasTag(this.filter);
-        }, this);
-        // remove obsolete notes
-        this.getStickyNotes().each(function(m) {
-            if (!newEntities.include(m.entity)) m.remove();
-        }, this);
-        // add new notes
-        newEntities.each(function(ea) {
-            if (!this.getStickyForEntity(ea)) this.addNote(ea);
-        }, this);
-        this.addMorph(this.createNote);
-    },
-    connect: function() {
-        this.getStickyNotes().invoke('connect');
-        this.getStickyNotes().pluck('entity').each(function(e) {
-            e.onChanged('content', this.tagList, 'updateNotes');
-        }, this);
-    },
-    disconnect: function() {
-        this.getStickyNotes().pluck('entity').each(function(e) {
-            e.offChanged('content', this.tagList, 'updateNotes');
-        }, this);
-        this.getStickyNotes().invoke('disconnect');
-    }
-});
-
-lively.morphic.Box.subclass('org.ui.View',
-'initialization', {
-    initialize: function($super, bounds, entity) {
-        $super(bounds);
-        this.entity = entity;
-    }
-},
-'interaction', {
-    withoutUpdating: function(cb) {
-        // edits the entity through this view
-        // also prevents recursive and automatically triggered updates
-        if (this.isUpdating || !(this.entity instanceof org.model.Entity)) return;
-        try {
-            this.preventUpdates = true;
-            cb.call(this);
-        } finally {
-            delete this.preventUpdates;
-        }
-    }
-},
-'updating', {
-    onOwnerChanged: function(newOwner) {
-        // clean up connections when removing this view
-        if (newOwner) {
-            this.entity.onChanged(this, 'onEntityChange');
-            this.entity.onDeleted(this, 'remove');
-        } else if (this.entity) {
-            this.entity.offChanged(this, 'onEntityChange');
-            this.entity.offDeleted(this, 'remove');
-        }
-    },
-    onEntityChange: function() {
-        // triggered on every change on the entity
-        if (!this.preventUpdates) {
-            this.update();
-        }
-    },
-    doUpdate: function() {
-        // actual update logic
-        // override in subclass
-    },
-    update: function() {
-        // update view without triggering recursive updates
-        try {
-            this.isUpdating = true;
-            this.doUpdate();
-        } finally {
-            delete this.isUpdating;
-        }
-    },
-    connect: function(hub) {
-        if (!this.entity) { // resolve entity id to real entity if not already done
-            this.entity = hub.get(this.$entity);
-        }
-        // create entity change connections
-        this.entity.onChanged(this, 'onEntityChange');
-        this.entity.onDeleted(this, 'remove');
-        this.onEntityChange();
-        delete this.$entity;
-    },
-    disconnect: function() {
-        // remove entity change connections
-        this.entity.offChanged(this, 'onEntityChange');
-        this.entity.offDeleted(this, 'remove');
-    }
-},
+org.widgets.View.subclass('org.ui.View',
 'serialization', {
-    doNotSerialize: ['entity'],
-    onstore: function(persistentCopy) {
-        // disconnect when storing
-        if (this.entity) {
-            this.disconnect();
-            // store only entity id, not real entity
-            persistentCopy.$entity = this.entity.getTypedId();
-        }
+    onstore: function($super, persistentCopy) {
+        $super(persistentCopy);
         // if there is a currently connected workspace
         var workspace = org.ui.Workspace.current();
         if (workspace && workspace.isConnected) {
@@ -671,7 +302,8 @@ lively.morphic.Box.subclass('org.ui.View',
             this.connect(workspace.hub);
         }
     },
-    onrestore: function() {
+    onrestore: function($super) {
+        $super();
         // if there is a currently connected workspace
         var workspace = org.ui.Workspace.current();
         if (workspace && workspace.isConnected) {
@@ -680,6 +312,82 @@ lively.morphic.Box.subclass('org.ui.View',
         }
     }
 });
+
+org.ui.View.subclass('org.ui.AddNewNote',
+'initialization', {
+    initialize: function($super, ownerEntity) {
+        var bounds = lively.rect(0, 0, 100, 20);
+        $super(bounds, ownerEntity);
+        this.setLayouter(new lively.morphic.Layout.HorizontalLayout());
+        this.layout.resizeWidth = true;
+        this.txt = new lively.morphic.Text(bounds, 'Add new note');
+        this.txt.layout = {resizeWidth: true, resizeHeight: true};
+        this.txt.setAlign('center');
+        this.txt.setFill(null);
+        this.txt.setBorderWidth(0);
+        this.txt.emphasizeAll({color: Color.black, doit: {
+            code: 'this.addNewNote()',
+            context: this
+        }});
+        this.addMorph(this.txt);
+    }
+},
+'interactions', {
+    addNewNote: function() {
+        if (this.owner instanceof org.ui.NoteList) {
+            this.owner.addNewNote();
+        }
+    }
+});
+
+org.widgets.EntityList.subclass('org.ui.NoteList',
+'initialization', {
+    initialize: function($super, owner) {
+        $super({tags: true});
+        if (owner) {
+            this.createNote = new org.ui.AddNewNote(owner);
+            this.addMorph(this.createNote);
+        }
+    }
+},
+'accessing', {
+    getStickyNotes: function() {
+        return this.submorphs.select(function(m) {
+            return m instanceof org.ui.StickyNote;
+        });
+    },
+    getStickyForEntity: function(entity) {
+        return this.getStickyNotes()
+            .find(function(m) { return m.entity == entity; });
+    }
+},
+'entities', {
+    addNewNote: function() {
+        var hub = org.ui.Workspace.current().hub;
+        var newNote = hub.createNote();
+        if (this.filter) newNote.setContent(' ' + this.filter);
+        this.createNote.entity.addNote(newNote);
+        var sticky = this.getStickyForEntity(newNote);
+        sticky.submorphs.first().focus();
+        this.owner.scrollToBottom();
+    },
+    addNote: function(noteEntity) {
+        var note = new org.ui.StickyNote(noteEntity);
+        note.layout.resizeWidth = true;
+        this.addMorph(note);
+        noteEntity.onChanged('content', this.tagList, 'updateNotes');
+        return note;
+    }
+},
+'updating', {
+    update: function($super) {
+        $super();
+        if (this.createNote) {
+            this.addMorph(this.createNote);
+        }
+    }
+});
+
 
 lively.morphic.Text.subclass('org.ui.CardTabHeader',
 'settings', {
@@ -702,7 +410,7 @@ lively.morphic.Text.subclass('org.ui.CardTabHeader',
         this.initializePane();
     },
     initializePane: function() {
-        this.pane = new org.ui.VBox(5, 0);
+        this.pane = new org.widgets.VBox(5, 0);
     }
 },
 'rendering', {
@@ -800,7 +508,7 @@ org.ui.View.subclass('org.ui.Card',
         this.setClipMode('hidden');
     },
     initializeTabBar: function() {
-        this.tabBar = new org.ui.HBox(0, 0);
+        this.tabBar = new org.widgets.HBox(0, 0);
         this.tabBar.setExtent(lively.pt(100, 32));
         this.tabBar.layout.resizeHeight = false;
         this.tabBar.setBorderRadius("10px 10px 0 0");
@@ -837,7 +545,7 @@ org.ui.View.subclass('org.ui.Card',
     },
     initializeNotesTab: function() {
         var notesTab = this.addTab("Notes");
-        this.noteList = new org.ui.NoteList(this);
+        this.noteList = new org.ui.NoteList(this.entity);
         notesTab.pane.addMorph(this.noteList);
         return notesTab.pane;
     },
@@ -868,7 +576,7 @@ org.ui.View.subclass('org.ui.Card',
 'updating', {
     doUpdate: function() {
         this.label.textString = this.entity.getLabel();
-        this.noteList.update();
+        this.noteList.setEntities(this.entity.getNotes());
     },
     connect: function($super, hub) {
         $super(hub);
@@ -923,7 +631,7 @@ org.ui.Card.subclass('org.ui.UserCard',
     },
     initializeDescriptionTab: function($super) {
         this.descriptionPane = $super();
-        this.infoPane = new org.ui.HBox(12, 20);
+        this.infoPane = new org.widgets.HBox(12, 20);
         this.initializeAvatar();
         this.initializeInfo();
         this.descriptionPane.addMorph(this.infoPane);
@@ -984,7 +692,7 @@ org.ui.Card.subclass('org.ui.UserCard',
         projectHeader.emphasizeAll({fontWeight: 'bold'});
         projectHeader.disableEvents();
         this.descriptionPane.addMorph(projectHeader);
-        this.projectList = new org.ui.IconList();
+        this.projectList = new org.widgets.IconList();
         this.descriptionPane.addMorph(this.projectList);
     }
 },
@@ -1007,11 +715,6 @@ org.ui.Card.subclass('org.ui.UserCard',
         }
         evt.stop();
         return true;
-    }
-},
-'interaction', {
-    openOffice: function() {
-        this.world().get("MapView").openOffice(this.entity);
     }
 },
 'updating', {
@@ -1069,7 +772,7 @@ org.ui.Card.subclass('org.ui.ProjectCard',
         memberHeader.emphasizeAll({fontWeight: 'bold'});
         memberHeader.disableEvents();
         this.descriptionPane.addMorph(memberHeader);
-        this.memberList = new org.ui.IconList();
+        this.memberList = new org.widgets.IconList();
         this.descriptionPane.addMorph(this.memberList);
     },
     initializeHistoryTab: function() {
@@ -1173,83 +876,8 @@ org.ui.Card.subclass('org.ui.ProjectCard',
 });
 
 
-org.ui.View.subclass('org.ui.Icon',
-'settings', {
-    defaultExtent: lively.pt(80, 96),
-    verticalListExtent: lively.pt(160, 48)
-},
-'initialization', {
-    initialize: function($super, entity, verticalList) {
-        var extent = verticalList?this.verticalListExtent:this.defaultExtent;
-        $super(extent.extentAsRectangle(), entity);
-        var layouter = new lively.morphic.Layout.VerticalLayout(this);
-        layouter.setBorderSize(5);
-        layouter.setSpacing(0);
-        Object.addScript(layouter, function orderedSubmorphs(submorphs) {
-            return submorphs.reject(function(ea) {
-                return ea.isEpiMorp || !ea.isLayoutable;
-            });
-        });
-        this.addStyleClassName('Icon');
-        this.setLayouter(layouter);
-        this.setClipMode('hidden');
-        this.disableGrabbing();
-        this.enableDragging();
-    }
-},
-'interaction', {
-    createCard: function() {
-        // override in subclass
-    },
-    setGrabDirection: function(aString) {
-        // can be horizontal and vertical
-        this.grabDirection = aString;
-    },
-    getGrabDirection: function() {
-        // can be horizontal and vertical
-        return this.grabDirection === 'vertical'? 'vertical' : 'horizontal';
-    },
-    onDragStart: function(evt) {
-        var card = this.createCard();
-        if (UserAgent.isTouch) {
-            card.setDraggableWithoutHalo(true)
-            card.disableSelection();
-        }
-        this.world().firstHand().grabMorph(card);
-        return true;
-    },
-    onTouchEnd: function(evt) {
-        evt.world.dispatchDrop(evt);
-    },
-    onTouchMove: function(evt) {
-        var touch = evt.touches[0];
-        evt.hand.setPosition(evt.getPosition());
-        if(touch && touch.partItemOffset) {
-            var vertical = this.getGrabDirection() === 'vertical',
-                originalOffset = vertical ? touch.screenY : touch.screenX,
-                delta = originalOffset - touch.partItemOffset;
-            if (Math.abs(delta) > 100) {
-                this.onDragStart(evt)
-                delete touch.partItemOffset;
-                touch.draggingCanceled = true;
-            }
-        }
-    },
-    onTouchStart: function(evt) {
-        var touch = evt.touches[0];
-        if (touch) {
-            var vertical = this.getGrabDirection() === 'vertical';
-            touch.partItemOffset = vertical? touch.screenY : touch.screenX;
-        }
-    },
-},
-'optimization', {
-    getGrabShadow: function() {
-        return new lively.morphic.Box(this.getBounds());
-    }
-});
 
-org.ui.Icon.subclass('org.ui.UserIcon',
+org.widgets.Icon.subclass('org.ui.UserIcon',
 'settings', {
     avatarExtent: lively.pt(50, 50),
     verticalListExtent: lively.pt(160, 76)
@@ -1285,9 +913,6 @@ org.ui.Icon.subclass('org.ui.UserIcon',
     }
 },
 'interaction', {
-    createCard: function() {
-        return new org.ui.UserCard(this.entity);
-    }
 },
 'updating', {
     doUpdate: function() {
@@ -1301,7 +926,7 @@ org.ui.Icon.subclass('org.ui.UserIcon',
     }
 });
 
-org.ui.Icon.subclass('org.ui.ProjectIcon',
+org.widgets.Icon.subclass('org.ui.ProjectIcon',
 'initialization', {
     initialize: function($super, project, verticalList) {
         $super(project, verticalList);
@@ -1327,9 +952,6 @@ org.ui.Icon.subclass('org.ui.ProjectIcon',
     }
 },
 'interaction', {
-    createCard: function() {
-        return new org.ui.ProjectCard(this.entity);
-    }
 },
 'updating', {
     doUpdate: function() {
@@ -1456,9 +1078,6 @@ org.ui.View.subclass('org.ui.StickyNote',
         note.setPosition(this.globalBounds().bottomLeft().addXY(0, 5));
         note.submorphs.first().focus();
         return note;
-    },
-    setGrabDirection: function() {
-        // do nothing
     }
 },
 'updating', {
@@ -1498,7 +1117,7 @@ org.ui.View.subclass('org.ui.StickyNote',
     }
 });
 
-org.ui.VBox.subclass('org.ui.SearchBar',
+org.widgets.VBox.subclass('org.ui.SearchBar',
 'initialization', {
     initialize: function($super, bounds, entityHub) {
         $super(5, 5);
@@ -1546,7 +1165,7 @@ org.ui.VBox.subclass('org.ui.SearchBar',
     onTouchEnd: function(evt) { evt.stop(); }
 });
 
-org.ui.VBox.subclass('org.ui.SearchResults',
+org.widgets.VBox.subclass('org.ui.SearchResults',
 'initialization', {
     initialize: function($super) {
         var borderSize = {top: 0, left: 0, right: 20, bottom: 10};
@@ -1642,7 +1261,6 @@ org.ui.VBox.subclass('org.ui.SearchResults',
     },
     createIcon: function(entity) {
         var icon = entity.createIcon(true);
-        icon.setGrabDirection('vertical');
         icon.setPosition(pt(this.submorphs.length * 100, 0));
         icon.applyStyle({resizeWidth: true, resizeHeight: false});
         this.addMorph(icon);
