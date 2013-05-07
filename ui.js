@@ -343,7 +343,7 @@ org.ui.View.subclass('org.ui.AddNewNote',
 org.widgets.EntityList.subclass('org.ui.NoteList',
 'initialization', {
     initialize: function($super, owner) {
-        $super({tags: true});
+        $super({tags: true, grouping: true});
         if (owner) {
             this.createNote = new org.ui.AddNewNote(owner);
             this.addMorph(this.createNote);
