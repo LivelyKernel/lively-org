@@ -362,6 +362,13 @@ org.widgets.EntityList.subclass('org.ui.NoteList',
     }
 },
 'entities', {
+    addViewForEntity: function($super, entity) {
+        var view = $super(entity);
+        if (this.tagList && entity instanceof org.model.Note) {
+            entity.onChanged('content', this.tagList, 'updateTags');
+        }
+        return view;
+    },
     addNewNote: function() {
         var hub = org.ui.Workspace.current().hub;
         var newNote = hub.createNote();
@@ -1165,42 +1172,43 @@ org.widgets.VBox.subclass('org.ui.SearchBar',
     onTouchEnd: function(evt) { evt.stop(); }
 });
 
-org.widgets.VBox.subclass('org.ui.SearchResults',
+org.widgets.EntityList.subclass('org.ui.SearchResults',
 'initialization', {
     initialize: function($super) {
         var borderSize = {top: 0, left: 0, right: 20, bottom: 10};
-        $super(borderSize, 0);
+        $super({borderSize: borderSize});
         this.applyStyle({
             resizeHeight: true,
             resizeWidth: true,
             clipMode: {x: 'hidden', y: 'auto'}});
         this.setName('SearchResults');
-        this.results = [];
     }
 },
 'serialization', {
     onstore: function() {
         this.removeAllMorphs();
-    },
-    doNotSerialize: ['results']
+    }
 },
 'displaying', {
     showResults: function(results) {
+        this.setEntities(results);
+    },
+    update: function() {
         // matching current morphs with results
         var morphs = this.submorphs.reject(function(m) { return m.isGroup }),
             matchedMorphs = 0;
         while (matchedMorphs < morphs.length &&
-               matchedMorphs < results.length &&
-               morphs[matchedMorphs].entity===results[matchedMorphs]){
+               matchedMorphs < this.entities.length &&
+               morphs[matchedMorphs].entity===this.entities[matchedMorphs]){
             matchedMorphs++;
         }
+
         morphs.clone().each(function(morph, idx) {
-            if (idx < matchedMorphs) {
-                results.shift(); // keep matching morph
-            } else {
+            if (idx >= matchedMorphs) {
                 morph.remove(); // remove others
             }
         });
+        this.shownEntities = matchedMorphs;
 
         // remove empty groups
         for (var i = this.submorphs.length - 1; i >= 0; i--) {
@@ -1211,26 +1219,26 @@ org.widgets.VBox.subclass('org.ui.SearchResults',
         }
 
         // add results until screen is about full
-        this.results = results;
         var height = this.getExtent().y,
             shapeNode = this.renderContext().shapeNode;
-        while (this.results.length > 0 && shapeNode.scrollHeight <= height) {
+        while (this.shownEntities < this.entities.length &&
+               shapeNode.scrollHeight <= height) {
             this.showNext();
         }
         // indicate more results
-        if (this.results.length > 0) {
+        if (this.shownEntities < this.entities.length) {
             this.createMoreIcon();
         }
     },
     showNext: function() {
-        if (this.results.length === 0) return;
-        var nextResult = this.results.shift(),
-            nextGroup = nextResult.getSearchGroup();
+        if (this.shownEntities === this.entities.length) return;
+        var nextEntity = this.entities[this.shownEntities++],
+            nextGroup = nextEntity.getSearchGroup();
         if (this.submorphs.length == 0 ||
             this.submorphs.last().entity.getSearchGroup() !== nextGroup) {
             this.createGroup(nextGroup);
         }
-        this.createIcon(nextResult);
+        this.addViewForEntity(nextEntity);
     },
     numberToShowMore: 10,
     showMore: function() {
@@ -1240,10 +1248,15 @@ org.widgets.VBox.subclass('org.ui.SearchResults',
         for (var i = 0; i < this.numberToShowMore; i++) {
             this.showNext();
         }
-        if (this.results.length > 0) {
+        // indicate more results
+        if (this.shownEntities < this.entities.length) {
             this.createMoreIcon();
         }
+        // reset scroll to old value
         this.jQuery().scrollTop(oldScroll);
+    },
+    addViewForEntity: function($super, entity) {
+        return this.addView(entity.createIcon(true));
     },
     createGroup: function(nextGroup) {
         var group = new lively.morphic.Text(lively.rect(0,0,80,24), nextGroup);
@@ -1258,12 +1271,6 @@ org.widgets.VBox.subclass('org.ui.SearchResults',
         group.layout = {resizeWidth: true};
         group.emphasizeAll({fontWeight: 'bold'});
         this.addMorph(group);
-    },
-    createIcon: function(entity) {
-        var icon = entity.createIcon(true);
-        icon.setPosition(pt(this.submorphs.length * 100, 0));
-        icon.applyStyle({resizeWidth: true, resizeHeight: false});
-        this.addMorph(icon);
     },
     createMoreIcon: function() {
         var more = new lively.morphic.Text(lively.rect(0,0,80,80), "...");
@@ -1281,6 +1288,7 @@ org.widgets.VBox.subclass('org.ui.SearchResults',
 },
 'interaction', {
     onScroll: function(evt) {
+        if (this.shownEntities === this.entities.length) return;
         var total = this.jQuery().scrollTop() + this.getExtent().y;
         if (total == this.renderContext().shapeNode.scrollHeight) {
             this.showMore();

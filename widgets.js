@@ -308,12 +308,13 @@ org.widgets.HBox.subclass('org.widgets.TagList',
 org.widgets.VBox.subclass('org.widgets.EntityList',
 'initialization', {
     initialize: function($super, options) {
-        options = options || {};
-        var borderSize = {top: 0, left: 0, right: 20, bottom: 10};
+        this.options = options || {};
+        var borderSize = this.options.borderSize ||
+                         {top: 0, left: 0, right: 20, bottom: 10};
         $super(borderSize, 0);
         this.entities = [];
         this.setClipMode({x: 'hidden', y: 'auto'});
-        if (options.tags) {
+        if (this.options.tags) {
             this.initializeTagList();
             this.tagList.updateTags();
         }
@@ -346,14 +347,13 @@ org.widgets.VBox.subclass('org.widgets.EntityList',
     }
 },
 'updating', {
-    addViewForEntity: function(entity) {
-        var view = entity.createIcon();
+    addView: function(view) {
         view.layout.resizeWidth = true;
         this.addMorph(view);
-        if (this.tagList) {
-            entity.onChanged('content', this.tagList, 'updateTags');
-        }
         return view;
+    },
+    addViewForEntity: function(entity) {
+        return this.addView(entity.createIcon());
     },
     getViewForEntity: function(entity) {
         return this.submorphs.find(function(m) {
@@ -385,6 +385,9 @@ org.widgets.VBox.subclass('org.widgets.EntityList',
         }, this);
         this.getViews().invoke('disconnect');
     }
+},
+'serialization', {
+    doNotSerialize: ['entities']
 });
 
 
