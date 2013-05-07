@@ -355,24 +355,6 @@ org.widgets.VBox.subclass('org.widgets.EntityList',
     addViewForEntity: function(entity) {
         return this.addView(entity.createIcon());
     },
-    getViewForEntity: function(entity) {
-        return this.submorphs.find(function(m) {
-            return m instanceof org.widgets.View && m.entity === entity;
-        });
-    },
-    update: function() {
-        var newEntities = this.filter ? this.entities.select(function(entity) {
-            return entity.hasTag(this.filter);
-        }, this) : this.entities;
-        // remove obsolete views
-        this.getViews().each(function(view) {
-            if (!newEntities.include(view.entity)) view.remove();
-        }, this);
-        // add new views
-        newEntities.each(function(ea) {
-            if (!this.getViewForEntity(ea)) this.addViewForEntity(ea);
-        }, this);
-    },
     connect: function() {
         this.getViews().invoke('connect');
         this.getViews().pluck('entity').each(function(e) {
@@ -384,6 +366,109 @@ org.widgets.VBox.subclass('org.widgets.EntityList',
             e.offChanged('content', this.tagList, 'updateTags');
         }, this);
         this.getViews().invoke('disconnect');
+    }
+},
+'entities', {
+    update: function() {
+        // matching current morphs with results
+        var morphs = this.submorphs.reject(function(m) { return m.isGroup }),
+            matchedMorphs = 0;
+        while (matchedMorphs < morphs.length &&
+               matchedMorphs < this.entities.length &&
+               morphs[matchedMorphs].entity===this.entities[matchedMorphs]){
+            matchedMorphs++;
+        }
+
+        morphs.clone().each(function(morph, idx) {
+            if (idx >= matchedMorphs) {
+                morph.remove(); // remove others
+            }
+        });
+        this.shownEntities = matchedMorphs;
+
+        // remove empty groups
+        for (var i = this.submorphs.length - 1; i >= 0; i--) {
+            if (this.submorphs[i].isGroup) {
+                var next = this.submorphs[i+1];
+                if (!next || next.isGroup) this.submorphs[i].remove();
+            }
+        }
+
+        // add results until screen is about full (if paging)
+        var height = this.getExtent().y,
+            shapeNode = this.renderContext().shapeNode;
+        while (this.shownEntities < this.entities.length &&
+               (!this.options.paging || shapeNode.scrollHeight <= height)) {
+            this.showNext();
+        }
+        // indicate more results
+        if (this.shownEntities < this.entities.length) {
+            this.createMoreIcon();
+        }
+    },
+    showNext: function() {
+        if (this.shownEntities === this.entities.length) return;
+        var nextEntity = this.entities[this.shownEntities++],
+            nextGroup = nextEntity.getSearchGroup();
+        if (this.options.grouping &&
+            (this.submorphs.length == 0 ||
+            this.submorphs.last().entity.getSearchGroup() !== nextGroup)) {
+            this.createGroup(nextGroup);
+        }
+        this.addViewForEntity(nextEntity);
+    },
+    numberToShowMore: 10,
+    showMore: function() {
+        var oldScroll = this.jQuery().scrollTop();
+        var sm = this.get('showMore');
+        if (sm) sm.remove();
+        for (var i = 0; i < this.numberToShowMore; i++) {
+            this.showNext();
+        }
+        // indicate more results
+        if (this.shownEntities < this.entities.length) {
+            this.createMoreIcon();
+        }
+        // reset scroll to old value
+        this.jQuery().scrollTop(oldScroll);
+    },
+    createGroup: function(nextGroup) {
+        var group = new lively.morphic.Text(lively.rect(0,0,80,24), nextGroup);
+        group.setFontSize(11);
+        group.setAlign('center');
+        group.setBorderWidth(0);
+        group.setFill(null);
+        group.setTextColor(Color.rgb(40, 40, 40));
+        group.disableGrabbing();
+        group.setInputAllowed(false);
+        group.isGroup = true;
+        group.layout = {resizeWidth: true};
+        group.emphasizeAll({fontWeight: 'bold'});
+        this.addMorph(group);
+        return group;
+    },
+    createMoreIcon: function() {
+        var more = new lively.morphic.Text(lively.rect(0,0,80,80), "...");
+        more.setFontSize(30);
+        more.setAlign('center');
+        more.setBorderWidth(0);
+        more.setFill(null);
+        more.setTextColor(Color.rgb(40, 40, 40));
+        more.disableGrabbing();
+        more.setInputAllowed(false);
+        more.setName('showMore');
+        more.layout = {resizeWidth: true};
+        this.addMorph(more);
+        return more;
+    }
+},
+'interaction', {
+    onScroll: function(evt) {
+        if (this.shownEntities === this.entities.length) return;
+        var total = this.jQuery().scrollTop() + this.getExtent().y;
+        if (total == this.renderContext().shapeNode.scrollHeight) {
+            this.showMore();
+        }
     }
 },
 'serialization', {

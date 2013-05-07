@@ -316,7 +316,7 @@ org.widgets.View.subclass('org.ui.View',
 org.ui.View.subclass('org.ui.AddNewNote',
 'initialization', {
     initialize: function($super, ownerEntity) {
-        var bounds = lively.rect(0, 0, 100, 20);
+        var bounds = lively.rect(0, 0, 100, 40);
         $super(bounds, ownerEntity);
         this.setLayouter(new lively.morphic.Layout.HorizontalLayout());
         this.layout.resizeWidth = true;
@@ -387,10 +387,16 @@ org.widgets.EntityList.subclass('org.ui.NoteList',
     }
 },
 'updating', {
+    setEntities: function($super, entities) {
+        $super(this.isReverse
+            ? entities.sortBy(function(note) {return -note.getCreationDate();})
+            : entities.sortBy(function(note) {return note.getCreationDate();}));
+    },
     update: function($super) {
         $super();
         if (this.createNote) {
-            this.addMorph(this.createNote);
+            var before = this.isReverse && this.submorphs[0];
+            this.addMorph(this.createNote, before);
         }
     }
 });
@@ -1176,7 +1182,7 @@ org.widgets.EntityList.subclass('org.ui.SearchResults',
 'initialization', {
     initialize: function($super) {
         var borderSize = {top: 0, left: 0, right: 20, bottom: 10};
-        $super({borderSize: borderSize});
+        $super({borderSize: borderSize, paging: true, grouping: true});
         this.applyStyle({
             resizeHeight: true,
             resizeWidth: true,
@@ -1193,106 +1199,18 @@ org.widgets.EntityList.subclass('org.ui.SearchResults',
     showResults: function(results) {
         this.setEntities(results);
     },
-    update: function() {
-        // matching current morphs with results
-        var morphs = this.submorphs.reject(function(m) { return m.isGroup }),
-            matchedMorphs = 0;
-        while (matchedMorphs < morphs.length &&
-               matchedMorphs < this.entities.length &&
-               morphs[matchedMorphs].entity===this.entities[matchedMorphs]){
-            matchedMorphs++;
-        }
-
-        morphs.clone().each(function(morph, idx) {
-            if (idx >= matchedMorphs) {
-                morph.remove(); // remove others
-            }
-        });
-        this.shownEntities = matchedMorphs;
-
-        // remove empty groups
-        for (var i = this.submorphs.length - 1; i >= 0; i--) {
-            if (this.submorphs[i].isGroup) {
-                var next = this.submorphs[i+1];
-                if (!next || next.isGroup) this.submorphs[i].remove();
-            }
-        }
-
-        // add results until screen is about full
-        var height = this.getExtent().y,
-            shapeNode = this.renderContext().shapeNode;
-        while (this.shownEntities < this.entities.length &&
-               shapeNode.scrollHeight <= height) {
-            this.showNext();
-        }
-        // indicate more results
-        if (this.shownEntities < this.entities.length) {
-            this.createMoreIcon();
-        }
-    },
-    showNext: function() {
-        if (this.shownEntities === this.entities.length) return;
-        var nextEntity = this.entities[this.shownEntities++],
-            nextGroup = nextEntity.getSearchGroup();
-        if (this.submorphs.length == 0 ||
-            this.submorphs.last().entity.getSearchGroup() !== nextGroup) {
-            this.createGroup(nextGroup);
-        }
-        this.addViewForEntity(nextEntity);
-    },
-    numberToShowMore: 10,
-    showMore: function() {
-        var oldScroll = this.jQuery().scrollTop();
-        var sm = this.get('showMore');
-        if (sm) sm.remove();
-        for (var i = 0; i < this.numberToShowMore; i++) {
-            this.showNext();
-        }
-        // indicate more results
-        if (this.shownEntities < this.entities.length) {
-            this.createMoreIcon();
-        }
-        // reset scroll to old value
-        this.jQuery().scrollTop(oldScroll);
-    },
     addViewForEntity: function($super, entity) {
         return this.addView(entity.createIcon(true));
     },
-    createGroup: function(nextGroup) {
-        var group = new lively.morphic.Text(lively.rect(0,0,80,24), nextGroup);
-        group.setFontSize(11);
-        group.setAlign('center');
-        group.setBorderWidth(0);
-        group.setFill(null);
-        group.setTextColor(Color.white);
-        group.disableGrabbing();
-        group.setInputAllowed(false);
-        group.isGroup = true;
-        group.layout = {resizeWidth: true};
-        group.emphasizeAll({fontWeight: 'bold'});
-        this.addMorph(group);
+    createGroup: function($super, nextGroup) {
+        var groupMorph = $super(nextGroup);
+        groupMorph.setTextColor(Color.white);
+        return groupMorph;
     },
-    createMoreIcon: function() {
-        var more = new lively.morphic.Text(lively.rect(0,0,80,80), "...");
-        more.setFontSize(30);
-        more.setAlign('center');
-        more.setBorderWidth(0);
-        more.setFill(null);
-        more.setTextColor(Color.gray);
-        more.disableGrabbing();
-        more.setInputAllowed(false);
-        more.setName('showMore');
-        more.layout = {resizeWidth: true};
-        this.addMorph(more);
-    }
-},
-'interaction', {
-    onScroll: function(evt) {
-        if (this.shownEntities === this.entities.length) return;
-        var total = this.jQuery().scrollTop() + this.getExtent().y;
-        if (total == this.renderContext().shapeNode.scrollHeight) {
-            this.showMore();
-        }
+    createMoreIcon: function($super) {
+        var moreMorph = $super();
+        moreMorph.setTextColor(Color.gray);
+        return moreMorph;
     }
 });
 
