@@ -580,11 +580,11 @@ Object.subclass('org.model.Change',
 },
 'networking', {
     send: function(send, prevHash) {
-        var subjectID = this.subject.getTypedId();
+        var subjectID = this.subject && this.subject.getTypedId();
         var serializedValue = this.value && this.serialize(this.value);
         if (!this.user) this.user = this.hub.me().id;
         var components = [
-            this.subject.getTypedId(),
+            subjectID,
             this.message,
             this.serialize(this.value),
             this.user,
