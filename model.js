@@ -408,9 +408,17 @@ org.model.EntityHub.subclass('org.model.ClientHub',
         return sentChanges.length > 0 ? sentChanges.last().hash : this.hash;
     },
     discardRedundantUpdates: function(change) {
-        this.pendingChanges = this.pendingChanges.reject(function(pending) {
-            return !pending.wasSent && pending.isRedundant(change);
-        });
+        for (var i = 0; i < this.pendingChanges.length; i++) {
+            var pending = this.pendingChanges[i];
+            if (pending.isRedundant(change)) {
+                // throw away pending and replace with new change
+                this.pendingChanges.removeAt(i--);
+            } else if (pending.isObsolete(change)) {
+                // throw away new change because it is obsolete
+                return true;
+            }
+        }
+        return false;
     },
     successfulChange: function(hash) {
         console.log('<- ok ' + hash);
@@ -445,7 +453,8 @@ org.model.EntityHub.subclass('org.model.ClientHub',
         }
         var change = new org.model.Change(this);
         change.init(subject, message, value, oldValue);
-        this.discardRedundantUpdates(change);
+        var isObsolete = this.discardRedundantUpdates(change);
+        if (isObsolete) return;
         this.pendingChanges.push(change);
         this.sendPendingChanges();
         return change;
@@ -545,6 +554,11 @@ Object.subclass('org.model.Change',
         return this.message[0] === '=' &&
                otherChange.subject == this.subject &&
                otherChange.message == this.message;
+    },
+    isObsolete: function(otherChange) {
+        return this.subject.getTypedId() === '/' &&
+               this.message[0] === '-' &&
+               otherChange.subject == this.value;
     }
 },
 'serialization', {
@@ -580,7 +594,7 @@ Object.subclass('org.model.Change',
 },
 'networking', {
     send: function(send, prevHash) {
-        var subjectID = this.subject && this.subject.getTypedId();
+        var subjectID = this.subject.getTypedId();
         var serializedValue = this.value && this.serialize(this.value);
         if (!this.user) this.user = this.hub.me().id;
         var components = [
