@@ -340,16 +340,22 @@ org.ui.View.subclass('org.ui.AddNewNote',
         if (this.owner instanceof org.ui.NoteList) {
             this.owner.addNewNote();
         }
+    },
+    doUpdate: function() {
+        if (this.owner instanceof org.ui.NoteList) {
+            this.owner.setEntities(this.entity.getNotes());
+        }
     }
 });
 
 org.widgets.EntityList.subclass('org.ui.NoteList',
 'initialization', {
-    initialize: function($super, owner) {
+    initialize: function($super, ownerEntity) {
         $super({tags: true, grouping: true});
-        if (owner) {
-            this.createNote = new org.ui.AddNewNote(owner);
+        if (ownerEntity) {
+            this.createNote = new org.ui.AddNewNote(ownerEntity);
             this.addMorph(this.createNote);
+            this.setEntities(ownerEntity.getNotes());
         }
     }
 },
@@ -592,7 +598,6 @@ org.ui.View.subclass('org.ui.Card',
 'updating', {
     doUpdate: function() {
         this.label.textString = this.entity.getLabel();
-        this.noteList.setEntities(this.entity.getNotes());
     },
     connect: function($super, hub) {
         $super(hub);
