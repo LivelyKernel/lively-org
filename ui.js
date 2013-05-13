@@ -239,7 +239,10 @@ Object.subclass('org.ui.Workspace',
     connectViews: function() {
         this.isConnected = true;
         this.world.submorphs
-            .select(function(m) { return m instanceof org.ui.View; })
+            .select(function(m) {
+                return m instanceof org.ui.View ||
+                       m instanceof org.widgets.EntityList;
+            })
             .invoke('connect', this.hub);
     },
     disconnectViews: function() {

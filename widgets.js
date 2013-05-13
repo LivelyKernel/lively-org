@@ -355,8 +355,8 @@ org.widgets.VBox.subclass('org.widgets.EntityList',
     addViewForEntity: function(entity) {
         return this.addView(entity.createIcon());
     },
-    connect: function() {
-        this.getViews().invoke('connect');
+    connect: function(hub) {
+        this.getViews().invoke('connect', hub);
         this.getViews().pluck('entity').each(function(e) {
             e.onChanged('content', this.tagList, 'updateTags');
         }, this);
