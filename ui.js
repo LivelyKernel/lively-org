@@ -1112,8 +1112,10 @@ org.ui.View.subclass('org.ui.StickyNote',
         }
     },
     doUpdate: function() {
+        var sel = this.content.getSelectionRange();
         this.content.textString = this.entity.getContent();
         this.content.fit();
+        if (sel) this.content.setSelectionRange(sel[0], sel[1]);
         this.info.textString = '';
         this.setInfoText();
     },
